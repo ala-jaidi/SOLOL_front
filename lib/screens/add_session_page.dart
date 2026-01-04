@@ -24,7 +24,7 @@ class _AddSessionPageState extends State<AddSessionPage> {
 
   List<Patient> _patients = [];
   Patient? _selectedPatient;
-  SessionStatus _status = SessionStatus.enCours;
+  SessionStatus _status = SessionStatus.pending;
   bool _valid = true;
   DateTime _date = DateTime.now();
   bool _loading = true;
@@ -173,7 +173,7 @@ class _AddSessionPageState extends State<AddSessionPage> {
                 child: Text(_statusLabel(s)),
               ))
           .toList(),
-      onChanged: (v) => setState(() => _status = v ?? SessionStatus.enCours),
+      onChanged: (v) => setState(() => _status = v ?? SessionStatus.pending),
     );
   }
 
@@ -245,11 +245,11 @@ class _AddSessionPageState extends State<AddSessionPage> {
 
   String _statusLabel(SessionStatus s) {
     switch (s) {
-      case SessionStatus.enCours:
+      case SessionStatus.pending:
         return 'En cours';
-      case SessionStatus.termine:
+      case SessionStatus.completed:
         return 'Terminé';
-      case SessionStatus.annule:
+      case SessionStatus.cancelled:
         return 'Annulé';
     }
   }

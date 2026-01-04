@@ -7,7 +7,7 @@ enum FootCondition {
 
 class MedicalQuestionnaire {
   final String id;
-  final String question;
+  final String cleDeLaQuestion;
   final FootCondition? condition;
   final String reponse;
   final DateTime createdAt;
@@ -15,7 +15,7 @@ class MedicalQuestionnaire {
 
   MedicalQuestionnaire({
     required this.id,
-    required this.question,
+    required this.cleDeLaQuestion,
     this.condition,
     required this.reponse,
     required this.createdAt,
@@ -24,7 +24,7 @@ class MedicalQuestionnaire {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'question': question,
+    'cleDeLaQuestion': cleDeLaQuestion,
     'condition': condition?.name,
     'reponse': reponse,
     'createdAt': createdAt.toIso8601String(),
@@ -33,7 +33,7 @@ class MedicalQuestionnaire {
 
   factory MedicalQuestionnaire.fromJson(Map<String, dynamic> json) => MedicalQuestionnaire(
     id: json['id'] as String,
-    question: json['question'] as String,
+    cleDeLaQuestion: json['cleDeLaQuestion'] as String,
     condition: json['condition'] != null 
         ? FootCondition.values.firstWhere((e) => e.name == json['condition'])
         : null,
@@ -44,14 +44,14 @@ class MedicalQuestionnaire {
 
   MedicalQuestionnaire copyWith({
     String? id,
-    String? question,
+    String? cleDeLaQuestion,
     FootCondition? condition,
     String? reponse,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => MedicalQuestionnaire(
     id: id ?? this.id,
-    question: question ?? this.question,
+    cleDeLaQuestion: cleDeLaQuestion ?? this.cleDeLaQuestion,
     condition: condition ?? this.condition,
     reponse: reponse ?? this.reponse,
     createdAt: createdAt ?? this.createdAt,

@@ -189,7 +189,7 @@ class _ScanPageState extends State<ScanPage> {
             id: sessionId,
             patientId: _selectedPatient!.id,
             createdAt: now,
-            status: SessionStatus.termine,
+            status: SessionStatus.completed,
             valid: true,
             footMetrics: [metrics],
             footScan: scan,

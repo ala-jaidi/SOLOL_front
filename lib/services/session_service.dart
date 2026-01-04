@@ -179,7 +179,7 @@ class SessionService {
       createdAt: createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now(),
       status: SessionStatus.values.firstWhere(
         (e) => e.name == sessionData['status'],
-        orElse: () => SessionStatus.termine,
+        orElse: () => SessionStatus.completed,
       ),
       valid: sessionData['valid'] as bool? ?? true,
       footMetrics: metrics,
@@ -222,7 +222,7 @@ class SessionService {
     final data = {
       'id': const Uuid().v4(),
       'session_id': sessionId,
-      'question': questionnaire.question,
+      'cleDeLaQuestion': questionnaire.cleDeLaQuestion,
       if (questionnaire.condition != null) 'condition': questionnaire.condition!.name,
       'reponse': questionnaire.reponse,
       'created_at': DateTime.now().toIso8601String(),

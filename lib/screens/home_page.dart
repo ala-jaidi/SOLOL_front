@@ -146,7 +146,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildStats(BuildContext context) {
-    final completedSessions = _recentSessions.where((s) => s.status == SessionStatus.termine).length;
+    final completedSessions = _recentSessions.where((s) => s.status == SessionStatus.completed).length;
     final avgConfidence = _recentSessions.isEmpty
         ? 0.0
         : _recentSessions

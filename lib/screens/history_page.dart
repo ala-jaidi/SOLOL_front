@@ -43,7 +43,7 @@ class _HistoryPageState extends State<HistoryPage> {
     if (_selectedFilter == 'Tous') return _sessions;
     final status = SessionStatus.values.firstWhere(
       (s) => s.name == _selectedFilter.toLowerCase().replaceAll('é', 'e'),
-      orElse: () => SessionStatus.termine,
+      orElse: () => SessionStatus.completed,
     );
     return _sessions.where((s) => s.status == status).toList();
   }
@@ -301,11 +301,11 @@ class _SessionHistoryCard extends StatelessWidget {
 
   Color _getStatusColor(SessionStatus status, BuildContext context) {
     switch (status) {
-      case SessionStatus.enCours:
+      case SessionStatus.pending:
         return Theme.of(context).colorScheme.tertiary;
-      case SessionStatus.termine:
+      case SessionStatus.completed:
         return Theme.of(context).colorScheme.secondary;
-      case SessionStatus.annule:
+      case SessionStatus.cancelled:
         return Theme.of(context).colorScheme.error;
     }
   }

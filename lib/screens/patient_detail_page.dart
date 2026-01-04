@@ -171,7 +171,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           SizedBox(height: AppSpacing.md),
           Text(_patient!.fullName, style: context.textStyles.headlineMedium?.bold).animate().fadeIn(delay: 300.ms),
           SizedBox(height: AppSpacing.xs),
-          Text('${_patient!.age} ans • ${_patient!.sexe}', 
+          Text('${_patient!.age} ans • ${_patient!.sexeLabel}', 
             style: context.textStyles.bodyLarge?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)).animate().fadeIn(delay: 400.ms),
           SizedBox(height: AppSpacing.lg),
           Container(
@@ -183,8 +183,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             ),
             child: Column(
               children: [
-                _InfoRow(icon: Icons.email_outlined, label: 'Email', value: _patient!.email),
-                Divider(height: AppSpacing.lg),
+                // _InfoRow(icon: Icons.email_outlined, label: 'Email', value: _patient!.email),
+                // Divider(height: AppSpacing.lg),
                 _InfoRow(icon: Icons.phone_outlined, label: 'Téléphone', value: _patient!.telephone),
                 Divider(height: AppSpacing.lg),
                 _InfoRow(icon: Icons.location_on_outlined, label: 'Adresse', value: _patient!.adresse),
@@ -473,11 +473,11 @@ class _SessionCard extends StatelessWidget {
 
   Color _getStatusColor(SessionStatus status, BuildContext context) {
     switch (status) {
-      case SessionStatus.enCours:
+      case SessionStatus.pending:
         return Theme.of(context).colorScheme.tertiary;
-      case SessionStatus.termine:
+      case SessionStatus.completed:
         return Theme.of(context).colorScheme.secondary;
-      case SessionStatus.annule:
+      case SessionStatus.cancelled:
         return Theme.of(context).colorScheme.error;
     }
   }
