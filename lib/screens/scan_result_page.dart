@@ -7,6 +7,7 @@ import 'package:lidarmesure/services/pdf_service.dart';
 import 'package:lidarmesure/state/notification_center.dart';
 import 'package:lidarmesure/components/modern_button.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:lidarmesure/models/user.dart';
 
 import 'package:lidarmesure/services/measurement_service.dart'; // Import nécessaire pour getImageUrl
@@ -110,6 +111,15 @@ class ScanResultPage extends StatelessWidget {
             icon: Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.primary),
             onPressed: () async {
               try {
+                Uint8List? topBytes;
+                Uint8List? sideBytes;
+                if (topImage != null) {
+                  topBytes = await topImage.readAsBytes();
+                }
+                if (sideImage != null) {
+                  sideBytes = await sideImage.readAsBytes();
+                }
+
                 await PdfService.shareReport(
                   patientName: patient?.fullName,
                   rightLengthCm: '$length cm',
@@ -120,8 +130,8 @@ class ScanResultPage extends StatelessWidget {
                   analysis1: 'Posture normale',
                   analysis2: 'Légère pronation détectée',
                   analysis3: 'Recommandation: Semelles orthopédiques',
-                  topImage: topImage,
-                  sideImage: sideImage,
+                  topImageBytes: topBytes,
+                  sideImageBytes: sideBytes,
                 );
                 if (context.mounted) {
                   await context.read<NotificationCenter>().add(

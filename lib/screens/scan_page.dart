@@ -221,6 +221,7 @@ class _ScanPageState extends State<ScanPage> {
           }
           // On continue quand même vers les résultats pour ne pas bloquer l'utilisateur
         }
+      }
 
       // Analyse terminée
       
