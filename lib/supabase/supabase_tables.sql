@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.patients (
 CREATE TABLE IF NOT EXISTS public.sessions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'enCours' CHECK (status IN ('enCours', 'termine', 'annule')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')),
   valid BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

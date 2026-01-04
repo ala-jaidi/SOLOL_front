@@ -43,6 +43,17 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     });
   }
 
+  Color _getStatusColor(SessionStatus status, BuildContext context) {
+    switch (status) {
+      case SessionStatus.pending:
+        return Theme.of(context).colorScheme.tertiary;
+      case SessionStatus.completed:
+        return Theme.of(context).colorScheme.secondary;
+      case SessionStatus.cancelled:
+        return Theme.of(context).colorScheme.error;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {

@@ -412,11 +412,11 @@ class _SessionCard extends StatelessWidget {
 
   Color _getStatusColor(SessionStatus status, BuildContext context) {
     switch (status) {
-      case SessionStatus.enCours:
+      case SessionStatus.pending:
         return Theme.of(context).colorScheme.tertiary;
-      case SessionStatus.termine:
+      case SessionStatus.completed:
         return Theme.of(context).colorScheme.secondary;
-      case SessionStatus.annule:
+      case SessionStatus.cancelled:
         return Theme.of(context).colorScheme.error;
     }
   }
