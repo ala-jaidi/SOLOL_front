@@ -69,11 +69,12 @@ class _AddPatientPageState extends State<AddPatientPage> {
                             _input(context, controller: _prenomCtrl, label: 'Prénom', icon: Icons.badge_outlined, validator: (v) => v == null || v.trim().isEmpty ? 'Prénom requis' : null),
                             _input(context, controller: _nomCtrl, label: 'Nom', icon: Icons.badge_outlined, validator: (v) => v == null || v.trim().isEmpty ? 'Nom requis' : null),
                           ),
-                          _twoCols(
-                            context,
-                            _input(context, controller: _emailCtrl, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress, validator: (v) => v != null && v.contains('@') ? null : 'Email invalide'),
-                            _input(context, controller: _telephoneCtrl, label: 'Téléphone', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) => v == null || v.trim().isEmpty ? 'Téléphone requis' : null),
-                          ),
+                          _input(context, controller: _telephoneCtrl, label: 'Téléphone', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) => v == null || v.trim().isEmpty ? 'Téléphone requis' : null),
+                          // _twoCols(
+                          //   context,
+                          //   _input(context, controller: _emailCtrl, label: 'Email', icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress, validator: (v) => v != null && v.contains('@') ? null : 'Email invalide'),
+                          //   _input(context, controller: _telephoneCtrl, label: 'Téléphone', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) => v == null || v.trim().isEmpty ? 'Téléphone requis' : null),
+                          // ),
                           _twoCols(context, _datePickerField(context), _dropdownField(context)),
                           _input(context, controller: _adresseCtrl, label: 'Adresse', icon: Icons.location_on_outlined, maxLines: 2, validator: (v) => v == null || v.trim().isEmpty ? 'Adresse requise' : null),
                         ],
@@ -241,15 +242,16 @@ class _AddPatientPageState extends State<AddPatientPage> {
     setState(() => _submitting = true);
     try {
       final createdAt = DateTime.now();
+      final int sexeInt = _sexe == 'Homme' ? 0 : (_sexe == 'Femme' ? 1 : 2);
       final patient = Patient(
         id: '',
         nom: _nomCtrl.text.trim(),
-        email: _emailCtrl.text.trim(),
-        organisation: 'Cabinet',
-        specialite: 'Patient',
+        // email: _emailCtrl.text.trim(),
+        organisation: 'Cabinet', // Default value
+        specialite: 'Patient',   // Default value
         prenom: _prenomCtrl.text.trim(),
         pointure: _pointureCtrl.text.trim(),
-        sexe: _sexe,
+        sexe: sexeInt,
         dateNaissance: _dateNaissance!,
         taille: double.parse(_tailleCtrl.text.replaceAll(',', '.')),
         poids: double.parse(_poidsCtrl.text.replaceAll(',', '.')),

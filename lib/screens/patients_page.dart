@@ -51,12 +51,12 @@ class _PatientsPageState extends State<PatientsPage> {
         list = list.where((patient) {
           final fullName = '${patient.prenom} ${patient.nom}'.toLowerCase();
           return fullName.contains(searchLower) ||
-              patient.email.toLowerCase().contains(searchLower) ||
+              // patient.email.toLowerCase().contains(searchLower) ||
               patient.telephone.contains(searchLower);
         });
       }
       if (_genderFilter != 'Tous') {
-        list = list.where((p) => p.sexe.toLowerCase().startsWith(_genderFilter.toLowerCase()));
+        list = list.where((p) => p.sexeLabel.toLowerCase().startsWith(_genderFilter.toLowerCase()));
       }
       final tmp = list.toList();
       if (_sort == 'Nom') {
@@ -379,7 +379,7 @@ class _PatientCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
-                      child: Text(patient.sexe, style: context.textStyles.labelSmall?.semiBold.withColor(cs.primary)),
+                      child: Text(patient.sexeLabel, style: context.textStyles.labelSmall?.semiBold.withColor(cs.primary)),
                     ),
                   ]),
                   SizedBox(height: AppSpacing.xs),
