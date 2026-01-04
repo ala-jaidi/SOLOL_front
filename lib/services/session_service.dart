@@ -222,7 +222,7 @@ class SessionService {
     final data = {
       'id': const Uuid().v4(),
       'session_id': sessionId,
-      'cleDeLaQuestion': questionnaire.cleDeLaQuestion,
+      'question': questionnaire.cleDeLaQuestion,
       if (questionnaire.condition != null) 'condition': questionnaire.condition!.name,
       'reponse': questionnaire.reponse,
       'created_at': DateTime.now().toIso8601String(),

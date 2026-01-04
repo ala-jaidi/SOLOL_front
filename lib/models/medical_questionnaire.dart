@@ -33,7 +33,7 @@ class MedicalQuestionnaire {
 
   factory MedicalQuestionnaire.fromJson(Map<String, dynamic> json) => MedicalQuestionnaire(
     id: json['id'] as String,
-    cleDeLaQuestion: json['cleDeLaQuestion'] as String,
+    cleDeLaQuestion: (json['cleDeLaQuestion'] ?? json['question']) as String,
     condition: json['condition'] != null 
         ? FootCondition.values.firstWhere((e) => e.name == json['condition'])
         : null,

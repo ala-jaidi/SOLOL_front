@@ -41,6 +41,11 @@ class PatientService {
       patientData['id'] = patient.id.isNotEmpty ? patient.id : const Uuid().v4();
       patientData['created_at'] = patientData['created_at'] ?? nowIso;
       patientData['updated_at'] = nowIso;
+      // Add default values for required DB fields not in Patient model
+      patientData['organisation'] = 'Cabinet';
+      patientData['specialite'] = 'Patient';
+      patientData['email'] = ''; // Legacy DB requirement
+      
       final rows = await SupabaseService.insert('patients', patientData);
       if (rows.isEmpty) throw Exception('Insertion sans retour');
       return Patient.fromJson(rows.first);
