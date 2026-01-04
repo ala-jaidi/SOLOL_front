@@ -21,17 +21,24 @@ class PdfService {
     String? analysis3,
     String? topImageAsset,
     String? sideImageAsset,
+    Uint8List? topImageBytes,
+    Uint8List? sideImageBytes,
   }) async {
     final doc = pw.Document();
 
     pw.ImageProvider? topImage;
     pw.ImageProvider? sideImage;
     try {
-      if (topImageAsset != null) {
+      if (topImageBytes != null) {
+        topImage = pw.MemoryImage(topImageBytes);
+      } else if (topImageAsset != null) {
         final bytes = await rootBundle.load(topImageAsset);
         topImage = pw.MemoryImage(bytes.buffer.asUint8List());
       }
-      if (sideImageAsset != null) {
+      
+      if (sideImageBytes != null) {
+        sideImage = pw.MemoryImage(sideImageBytes);
+      } else if (sideImageAsset != null) {
         final bytes = await rootBundle.load(sideImageAsset);
         sideImage = pw.MemoryImage(bytes.buffer.asUint8List());
       }
