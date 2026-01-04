@@ -35,7 +35,6 @@ class _AddPatientPageState extends State<AddPatientPage> {
   void dispose() {
     _prenomCtrl.dispose();
     _nomCtrl.dispose();
-    _emailCtrl.dispose();
     _telephoneCtrl.dispose();
     _adresseCtrl.dispose();
     _pointureCtrl.dispose();
