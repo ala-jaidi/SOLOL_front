@@ -144,38 +144,57 @@ class SessionService {
 
   // Private helper methods
   Future<Session> _buildSession(Map<String, dynamic> sessionData) async {
-    final sessionId = sessionData['id'] as String;
+    final sessionId = sessionData['id'] as String? ?? '';
+    if (sessionId.isEmpty) {
+      throw Exception('Session ID is null');
+    }
     
     // Load foot metrics
-    final metricsData = await SupabaseService.select(
-      'foot_metrics',
-      filters: {'session_id': sessionId},
-    );
-    final metrics = metricsData.map((json) => FootMetrics.fromJson(json)).toList();
+    List<FootMetrics> metrics = [];
+    try {
+      final metricsData = await SupabaseService.select(
+        'foot_metrics',
+        filters: {'session_id': sessionId},
+      );
+      metrics = metricsData.map((json) => FootMetrics.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error loading foot metrics: $e');
+    }
     
     // Load foot scan
-    final scanData = await SupabaseService.selectSingle(
-      'foot_scans',
-      filters: {'session_id': sessionId},
-    );
-    final scan = scanData != null ? FootScan.fromJson(scanData) : null;
+    FootScan? scan;
+    try {
+      final scanData = await SupabaseService.selectSingle(
+        'foot_scans',
+        filters: {'session_id': sessionId},
+      );
+      scan = scanData != null ? FootScan.fromJson(scanData) : null;
+    } catch (e) {
+      debugPrint('Error loading foot scan: $e');
+    }
     
     // Load questionnaires
-    final questionnairesData = await SupabaseService.select(
-      'medical_questionnaires',
-      filters: {'session_id': sessionId},
-    );
-    final questionnaires = questionnairesData
-        .map((json) => MedicalQuestionnaire.fromJson(json))
-        .toList();
+    List<MedicalQuestionnaire> questionnaires = [];
+    try {
+      final questionnairesData = await SupabaseService.select(
+        'medical_questionnaires',
+        filters: {'session_id': sessionId},
+      );
+      questionnaires = questionnairesData
+          .map((json) => MedicalQuestionnaire.fromJson(json))
+          .toList();
+    } catch (e) {
+      debugPrint('Error loading questionnaires: $e');
+    }
     
     // Robust date parsing (handle potential nulls or format issues if needed)
     final createdAtStr = sessionData['created_at'] as String?;
     final updatedAtStr = sessionData['updated_at'] as String?;
+    final patientId = sessionData['patient_id'] as String? ?? '';
 
     return Session(
       id: sessionId,
-      patientId: sessionData['patient_id'] as String,
+      patientId: patientId,
       createdAt: createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now(),
       status: SessionStatus.values.firstWhere(
         (e) => e.name == sessionData['status'],

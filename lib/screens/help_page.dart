@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../theme.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -11,7 +12,7 @@ class HelpPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Aide'),
+        title: Text(AppLocalizations.of(context).helpTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
@@ -23,17 +24,21 @@ class HelpPage extends StatelessWidget {
           ListView(
             padding: AppSpacing.paddingLg,
             children: [
-              _card(context, Icons.help_outline_rounded, 'Comment effectuer un scan ?',
-                  'Allez dans Scanner > suivez les instructions, maintenez l’appareil stable et assurez une bonne luminosité.'),
+              _card(context, Icons.help_outline_rounded, 
+                  AppLocalizations.of(context).isFrench ? 'Comment effectuer un scan ?' : 'How to perform a scan?',
+                  AppLocalizations.of(context).isFrench ? 'Allez dans Scanner > suivez les instructions, maintenez l\'appareil stable et assurez une bonne luminosite.' : 'Go to Scanner > follow instructions, hold device steady and ensure good lighting.'),
               SizedBox(height: AppSpacing.md),
-              _card(context, Icons.picture_as_pdf_outlined, 'Exporter un rapport PDF',
-                  'Depuis la page Résultats, appuyez sur Partager > Exporter PDF pour envoyer par email ou enregistrer.'),
+              _card(context, Icons.picture_as_pdf_outlined, 
+                  AppLocalizations.of(context).isFrench ? 'Exporter un rapport PDF' : 'Export PDF report',
+                  AppLocalizations.of(context).isFrench ? 'Depuis la page Resultats, appuyez sur Partager > Exporter PDF pour envoyer par email ou enregistrer.' : 'From Results page, tap Share > Export PDF to send by email or save.'),
               SizedBox(height: AppSpacing.md),
-              _card(context, Icons.notifications_none_rounded, 'Notifications',
-                  'Les alertes liées aux rapports et actions apparaissent sur la page Notifications.'),
+              _card(context, Icons.notifications_none_rounded, 
+                  AppLocalizations.of(context).isFrench ? 'Notifications' : 'Notifications',
+                  AppLocalizations.of(context).isFrench ? 'Les alertes liees aux rapports et actions apparaissent sur la page Notifications.' : 'Alerts related to reports and actions appear on the Notifications page.'),
               SizedBox(height: AppSpacing.md),
-              _card(context, Icons.lock_outline_rounded, 'Connexion & Sécurité',
-                  'Aucun backend n’est connecté. Utilisez le panneau Firebase ou Supabase dans Dreamflow pour activer l’authentification.'),
+              _card(context, Icons.lock_outline_rounded, 
+                  AppLocalizations.of(context).isFrench ? 'Connexion & Securite' : 'Login & Security',
+                  AppLocalizations.of(context).isFrench ? 'Aucun backend n\'est connecte. Utilisez le panneau Firebase ou Supabase dans Dreamflow pour activer l\'authentification.' : 'No backend connected. Use Firebase or Supabase panel in Dreamflow to enable authentication.'),
               SizedBox(height: AppSpacing.lg),
               Container(
                 padding: AppSpacing.paddingMd,
@@ -45,13 +50,13 @@ class HelpPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Besoin d’aide ?', style: context.textStyles.titleMedium?.semiBold),
+                    Text(AppLocalizations.of(context).isFrench ? 'Besoin d\'aide ?' : 'Need help?', style: context.textStyles.titleMedium?.semiBold),
                     SizedBox(height: 6),
-                    Text('Contactez le support ou consultez la documentation.'),
+                    Text(AppLocalizations.of(context).isFrench ? 'Contactez le support ou consultez la documentation.' : 'Contact support or check the documentation.'),
                     SizedBox(height: 12),
                     Wrap(spacing: 8, children: [
-                      OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.email_outlined), label: const Text('Email support')),
-                      FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.menu_book_outlined), label: const Text('Documentation')),
+                      OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.email_outlined), label: Text(AppLocalizations.of(context).isFrench ? 'Email support' : 'Email support')),
+                      FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.menu_book_outlined), label: Text(AppLocalizations.of(context).isFrench ? 'Documentation' : 'Documentation')),
                     ])
                   ],
                 ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/notification_center.dart';
 import '../theme.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
@@ -14,7 +15,7 @@ class NotificationsPage extends StatelessWidget {
     final nc = context.watch<NotificationCenter>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(AppLocalizations.of(context).notificationsTitle),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -23,7 +24,7 @@ class NotificationsPage extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.done_all_rounded, color: cs.primary),
-            tooltip: 'Tout marquer comme lu',
+            tooltip: AppLocalizations.of(context).markAllRead,
             onPressed: () => context.read<NotificationCenter>().markAllRead(),
           ),
         ],
@@ -99,7 +100,7 @@ class NotificationsPage extends StatelessWidget {
                                         TextButton.icon(
                                           onPressed: () => context.read<NotificationCenter>().markRead(n.id, !n.read),
                                           icon: Icon(n.read ? Icons.mark_email_unread : Icons.mark_email_read, size: 18),
-                                          label: Text(n.read ? 'Marquer non lu' : 'Marquer comme lu'),
+                                          label: Text(n.read ? (AppLocalizations.of(context).isFrench ? 'Marquer non lu' : 'Mark unread') : (AppLocalizations.of(context).isFrench ? 'Marquer comme lu' : 'Mark as read')),
                                         ),
                                       ],
                                     )
@@ -134,9 +135,9 @@ class NotificationsPage extends StatelessWidget {
             child: Icon(Icons.notifications_none_rounded, color: cs.primary, size: 28),
           ),
           SizedBox(height: AppSpacing.md),
-          Text('Aucune notification', style: context.textStyles.titleMedium?.semiBold),
+          Text(AppLocalizations.of(context).noNotifications, style: context.textStyles.titleMedium?.semiBold),
           SizedBox(height: 4),
-          Text('Vous verrez ici les alertes importantes', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
+          Text(AppLocalizations.of(context).isFrench ? 'Vous verrez ici les alertes importantes' : 'Important alerts will appear here', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
         ],
       ),
     );
@@ -145,9 +146,9 @@ class NotificationsPage extends StatelessWidget {
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'à l’instant';
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
+    if (diff.inMinutes < 1) return 'now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min';
+    if (diff.inHours < 24) return '${diff.inHours} h';
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-    }
+  }
 }

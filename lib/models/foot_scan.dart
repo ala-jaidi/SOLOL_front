@@ -24,11 +24,14 @@ class FootScan {
   };
 
   factory FootScan.fromJson(Map<String, dynamic> json) => FootScan(
-    topView: json['topView'] as String,
-    sideView: json['sideView'] as String,
-    angle: AngleType.values.firstWhere((e) => e.name == json['angle']),
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
+    topView: (json['topView'] ?? json['top_view'] ?? '') as String,
+    sideView: (json['sideView'] ?? json['side_view'] ?? '') as String,
+    angle: AngleType.values.firstWhere(
+      (e) => e.name == json['angle'],
+      orElse: () => AngleType.top,
+    ),
+    createdAt: DateTime.parse((json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()) as String),
+    updatedAt: DateTime.parse((json['updatedAt'] ?? json['updated_at'] ?? DateTime.now().toIso8601String()) as String),
   );
 
   FootScan copyWith({

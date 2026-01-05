@@ -5,10 +5,13 @@ import 'package:lidarmesure/services/patient_service.dart';
 import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/models/user.dart';
 import 'package:lidarmesure/models/session.dart';
+import 'package:lidarmesure/models/auth_user.dart' as auth;
+import 'package:lidarmesure/auth/supabase_auth_manager.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/components/app_sidebar.dart';
 import 'package:lidarmesure/components/gradient_header.dart';
 import 'package:lidarmesure/components/scan_cta.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,8 +23,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final PatientService _patientService = PatientService();
   final SessionService _sessionService = SessionService();
+  final SupabaseAuthManager _authManager = SupabaseAuthManager();
   List<Patient> _patients = [];
   List<Session> _recentSessions = [];
+  auth.User? _currentUser;
   bool _isLoading = true;
 
   @override
@@ -32,6 +37,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    _currentUser = await _authManager.getCurrentUser();
     _patients = await _patientService.getAllPatients();
     final allSessions = await _sessionService.getAllSessions();
     allSessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -41,38 +47,54 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       endDrawer: const AppSideBar(),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(context),
-                      SizedBox(height: AppSpacing.xl),
-                      _buildQuickActions(context),
-                      SizedBox(height: AppSpacing.xl),
-                      _buildStats(context),
-                      SizedBox(height: AppSpacing.xl),
-                      _buildRecentSessions(context),
-                      SizedBox(height: AppSpacing.xl),
-                    ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              cs.primary.withValues(alpha: 0.1),
+              cs.surface,
+            ],
+            stops: const [0.0, 0.3],
+          ),
+        ),
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(context),
+                        SizedBox(height: AppSpacing.xl),
+                        _buildQuickActions(context),
+                        SizedBox(height: AppSpacing.xl),
+                        _buildStats(context),
+                        SizedBox(height: AppSpacing.xl),
+                        _buildRecentSessions(context),
+                        SizedBox(height: AppSpacing.xl),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final userName = _currentUser?.fullName ?? 'professionnel';
     return GradientHeader(
-      title: 'Bonjour, Dr. Leblanc 👋',
-      subtitle: 'Bienvenue dans votre espace professionnel',
+      title: l10n.hello(userName),
+      subtitle: l10n.welcomeSubtitle,
       leading: Container(
         width: 48,
         height: 48,
@@ -92,15 +114,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildQuickActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: AppSpacing.horizontalLg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Actions Rapides', style: context.textStyles.titleLarge?.semiBold),
+          Text(l10n.quickActions, style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.md),
           // Dominant primary CTA
           ScanCTA(
+            label: l10n.newScan,
             onPressed: () => context.push('/scan'),
           ).animate().fadeIn(delay: 80.ms).slideY(begin: 0.2),
           SizedBox(height: AppSpacing.md),
@@ -109,7 +133,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _QuickActionCard(
                   icon: Icons.people_outline,
-                  label: 'Mes\nPatients',
+                  label: l10n.myPatients,
                   color: Theme.of(context).colorScheme.secondary,
                   onTap: () => context.push('/patients'),
                 ).animate().fadeIn(delay: 180.ms).scale(begin: const Offset(0.85, 0.85)),
@@ -118,7 +142,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _QuickActionCard(
                   icon: Icons.history,
-                  label: 'Historique',
+                  label: l10n.history,
                   color: Theme.of(context).colorScheme.tertiary,
                   onTap: () => context.push('/history'),
                 ).animate().fadeIn(delay: 260.ms).scale(begin: const Offset(0.85, 0.85)),
@@ -131,7 +155,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _QuickActionCard(
                   icon: Icons.chat_bubble_outline,
-                  label: 'Assistant\nIA',
+                  label: l10n.aiAssistant,
                   color: Theme.of(context).colorScheme.primary,
                   onTap: () => context.push('/chat'),
                 ).animate().fadeIn(delay: 340.ms).scale(begin: const Offset(0.9, 0.9)),
@@ -146,6 +170,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildStats(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final completedSessions = _recentSessions.where((s) => s.status == SessionStatus.completed).length;
     final avgConfidence = _recentSessions.isEmpty
         ? 0.0
@@ -160,7 +185,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Statistiques', style: context.textStyles.titleLarge?.semiBold),
+          Text(l10n.statistics, style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -168,7 +193,7 @@ class _HomePageState extends State<HomePage> {
                 child: _StatCard(
                   icon: Icons.person_outline,
                   value: '${_patients.length}',
-                  label: 'Patients',
+                  label: l10n.patients,
                   color: Theme.of(context).colorScheme.primary,
                 ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.2),
               ),
@@ -177,7 +202,7 @@ class _HomePageState extends State<HomePage> {
                 child: _StatCard(
                   icon: Icons.check_circle_outline,
                   value: '$completedSessions',
-                  label: 'Scans complétés',
+                  label: l10n.completedScans,
                   color: Theme.of(context).colorScheme.secondary,
                 ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
               ),
@@ -187,7 +212,7 @@ class _HomePageState extends State<HomePage> {
           _StatCard(
             icon: Icons.speed_outlined,
             value: '${(avgConfidence * 100).toStringAsFixed(0)}%',
-            label: 'Précision moyenne',
+            label: l10n.averagePrecision,
             color: Theme.of(context).colorScheme.tertiary,
             isWide: true,
           ).animate().fadeIn(delay: 300.ms).slideX(begin: -0.2),
@@ -197,6 +222,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRecentSessions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: AppSpacing.horizontalLg,
       child: Column(
@@ -205,10 +231,10 @@ class _HomePageState extends State<HomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Sessions Récentes', style: context.textStyles.titleLarge?.semiBold),
+              Text(l10n.recentSessions, style: context.textStyles.titleLarge?.semiBold),
               TextButton(
                 onPressed: () => context.push('/history'),
-                child: Text('Voir tout', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                child: Text(l10n.viewAll, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
               ),
             ],
           ),
@@ -217,7 +243,7 @@ class _HomePageState extends State<HomePage> {
             Center(
               child: Padding(
                 padding: AppSpacing.paddingXl,
-                child: Text('Aucune session récente', style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+                child: Text(l10n.noRecentSessions, style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
               ),
             )
           else

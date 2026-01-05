@@ -9,6 +9,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io' as io show File; // for FileImage on mobile
 import 'package:flutter/foundation.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class PatientDetailPage extends StatefulWidget {
   final String patientId;
@@ -58,12 +59,12 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
             children: [
               Icon(Icons.error_outline, size: 64, color: Theme.of(context).colorScheme.error),
               SizedBox(height: AppSpacing.lg),
-              Text('Patient non trouvé', style: context.textStyles.titleLarge?.semiBold),
+              Text(AppLocalizations.of(context).noPatientFound, style: context.textStyles.titleLarge?.semiBold),
               SizedBox(height: AppSpacing.md),
               FilledButton.icon(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Retour'),
+                label: Text(AppLocalizations.of(context).back),
               ),
             ],
           ),
@@ -100,7 +101,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         icon: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
-        label: Text('Nouveau Scan', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+        label: Text(AppLocalizations.of(context).newScan, style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
       ),
     );
   }
@@ -116,7 +117,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           ),
           SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text('Profil Patient', style: context.textStyles.headlineMedium?.bold),
+            child: Text(AppLocalizations.of(context).isFrench ? 'Profil Patient' : 'Patient Profile', style: context.textStyles.headlineMedium?.bold),
           ),
           IconButton(
             icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
@@ -185,15 +186,15 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               children: [
                 // _InfoRow(icon: Icons.email_outlined, label: 'Email', value: _patient!.email),
                 // Divider(height: AppSpacing.lg),
-                _InfoRow(icon: Icons.phone_outlined, label: 'Téléphone', value: _patient!.telephone),
+                _InfoRow(icon: Icons.phone_outlined, label: AppLocalizations.of(context).phone, value: _patient!.telephone),
                 Divider(height: AppSpacing.lg),
-                _InfoRow(icon: Icons.location_on_outlined, label: 'Adresse', value: _patient!.adresse),
+                _InfoRow(icon: Icons.location_on_outlined, label: AppLocalizations.of(context).address, value: _patient!.adresse),
                 Divider(height: AppSpacing.lg),
                 Row(
                   children: [
-                    Expanded(child: _InfoRow(icon: Icons.straighten, label: 'Pointure', value: _patient!.pointure)),
+                    Expanded(child: _InfoRow(icon: Icons.straighten, label: AppLocalizations.of(context).shoeSize, value: _patient!.pointure)),
                     Container(width: 1, height: 40, color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
-                    Expanded(child: _InfoRow(icon: Icons.monitor_weight_outlined, label: 'Poids', value: '${_patient!.poids} kg')),
+                    Expanded(child: _InfoRow(icon: Icons.monitor_weight_outlined, label: AppLocalizations.of(context).weight, value: '${_patient!.poids} kg')),
                   ],
                 ),
               ],
@@ -212,17 +213,17 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Sessions (${_sessions.length})', style: context.textStyles.titleLarge?.semiBold)),
+              Expanded(child: Text('${AppLocalizations.of(context).isFrench ? "Sessions" : "Sessions"} (${_sessions.length})', style: context.textStyles.titleLarge?.semiBold)),
               OutlinedButton.icon(
                 onPressed: () => context.push('/add-session?patientId=${widget.patientId}'),
                 icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Nouvelle session'),
+                label: Text(AppLocalizations.of(context).isFrench ? 'Nouvelle session' : 'New session'),
               ),
               const SizedBox(width: 8),
               if (_sessions.isNotEmpty)
                 TextButton(
                   onPressed: () => context.push('/history'),
-                  child: Text('Voir tout', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                  child: Text(AppLocalizations.of(context).seeAll, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                 ),
             ],
           ),
@@ -235,7 +236,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                   children: [
                     Icon(Icons.history, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
                     SizedBox(height: AppSpacing.md),
-                    Text('Aucune session', style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+                    Text(AppLocalizations.of(context).noSessions, style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -330,18 +331,18 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               children: [
                 ListTile(
                   leading: Icon(Icons.photo_camera_outlined, color: Theme.of(context).colorScheme.primary),
-                  title: const Text('Prendre une photo'),
+                  title: Text(AppLocalizations.of(context).isFrench ? 'Prendre une photo' : 'Take a photo'),
                   onTap: () => _pickAndUpload(ImageSource.camera),
                 ),
                 ListTile(
                   leading: Icon(Icons.photo_outlined, color: Theme.of(context).colorScheme.primary),
-                  title: const Text('Choisir depuis la galerie'),
+                  title: Text(AppLocalizations.of(context).isFrench ? 'Choisir depuis la galerie' : 'Choose from gallery'),
                   onTap: () => _pickAndUpload(ImageSource.gallery),
                 ),
                 if (_patient!.avatarUrl != null)
                   ListTile(
                     leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
-                    title: const Text('Supprimer la photo'),
+                    title: Text(AppLocalizations.of(context).isFrench ? 'Supprimer la photo' : 'Delete photo'),
                     onTap: () async {
                       Navigator.of(context).pop();
                       final updated = _patient!.copyWith(avatarUrl: null);

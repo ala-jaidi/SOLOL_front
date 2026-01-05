@@ -32,8 +32,8 @@ class GradientHeader extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            cs.primary.withValues(alpha: 0.08),
-            cs.tertiary.withValues(alpha: 0.06),
+            cs.primary.withValues(alpha: 0.1),
+            cs.tertiary.withValues(alpha: 0.1),
           ],
         ),
       ),

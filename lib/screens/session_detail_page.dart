@@ -5,8 +5,10 @@ import 'package:lidarmesure/models/session.dart';
 import 'package:lidarmesure/models/user.dart';
 import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/services/patient_service.dart';
+import 'package:lidarmesure/services/pdf_report_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/components/gradient_header.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class SessionDetailPage extends StatefulWidget {
   final String sessionId;
@@ -54,6 +56,17 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     }
   }
 
+  String _getStatusLabelEn(SessionStatus status) {
+    switch (status) {
+      case SessionStatus.pending:
+        return 'Pending';
+      case SessionStatus.completed:
+        return 'Completed';
+      case SessionStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -71,7 +84,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            GradientHeader(title: 'Détail de la session', subtitle: 'Analyse et mesures', showBack: true, onBack: () => context.pop()),
+            GradientHeader(title: AppLocalizations.of(context).sessionDetails, subtitle: AppLocalizations.of(context).measurements, showBack: true, onBack: () => context.pop()),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
@@ -104,13 +117,13 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                                   children: [
                                     Text(_patient!.fullName, style: context.textStyles.titleMedium?.semiBold),
                                     SizedBox(height: 2),
-                                    Text('Age ${_patient!.age} • Pointure ${_patient!.pointure}', style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant)),
+                                    Text(AppLocalizations.of(context).isFrench ? 'Age ${_patient!.age} - Pointure ${_patient!.pointure}' : 'Age ${_patient!.age} - Size ${_patient!.pointure}', style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant)),
                                   ],
                                 ),
                               ),
                               TextButton(
                                 onPressed: () => context.push('/patient/${_patient!.id}'),
-                                child: const Text('Voir profil'),
+                                child: Text(AppLocalizations.of(context).isFrench ? 'Voir profil' : 'View profile'),
                               ),
                             ],
                           ),
@@ -132,15 +145,15 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                               children: [
                                 Icon(Icons.insights_outlined, color: cs.primary),
                                 const SizedBox(width: 8),
-                                Text('Informations', style: context.textStyles.titleMedium?.semiBold),
+                                Text(AppLocalizations.of(context).isFrench ? 'Informations' : 'Information', style: context.textStyles.titleMedium?.semiBold),
                               ],
                             ),
                             SizedBox(height: AppSpacing.md),
                             _InfoRow(icon: Icons.schedule_rounded, label: 'Date', value: s.formattedDate),
                             Divider(height: AppSpacing.lg),
-                            _InfoRow(icon: Icons.verified_outlined, label: 'Statut', value: s.statusLabel),
+                            _InfoRow(icon: Icons.verified_outlined, label: AppLocalizations.of(context).isFrench ? 'Statut' : 'Status', value: AppLocalizations.of(context).isFrench ? s.statusLabel : _getStatusLabelEn(s.status)),
                             Divider(height: AppSpacing.lg),
-                            _InfoRow(icon: Icons.shield_outlined, label: 'Validé', value: s.valid ? 'Oui' : 'Non'),
+                            _InfoRow(icon: Icons.shield_outlined, label: AppLocalizations.of(context).isFrench ? 'Valide' : 'Valid', value: s.valid ? (AppLocalizations.of(context).isFrench ? 'Oui' : 'Yes') : (AppLocalizations.of(context).isFrench ? 'Non' : 'No')),
                           ],
                         ),
                       ).animate().fadeIn(delay: 100.ms),
@@ -162,12 +175,12 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                               children: [
                                 Icon(Icons.straighten, color: cs.primary),
                                 const SizedBox(width: 8),
-                                Text('Mesures', style: context.textStyles.titleMedium?.semiBold),
+                                Text(AppLocalizations.of(context).measurements, style: context.textStyles.titleMedium?.semiBold),
                               ],
                             ),
                             SizedBox(height: AppSpacing.md),
                             if (s.footMetrics.isEmpty)
-                              Text('Aucune mesure disponible', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant))
+                              Text(AppLocalizations.of(context).isFrench ? 'Aucune mesure disponible' : 'No measurements available', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant))
                             else
                               Column(
                                 children: s.footMetrics.map((m) => Container(
@@ -215,12 +228,12 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                               children: [
                                 Icon(Icons.image_outlined, color: cs.primary),
                                 const SizedBox(width: 8),
-                                Text('Captures LiDAR', style: context.textStyles.titleMedium?.semiBold),
+                                Text(AppLocalizations.of(context).isFrench ? 'Captures LiDAR' : 'LiDAR Captures', style: context.textStyles.titleMedium?.semiBold),
                               ],
                             ),
                             SizedBox(height: AppSpacing.md),
                             if (s.footScan == null)
-                              Text('Aucune image scannée', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant))
+                              Text(AppLocalizations.of(context).isFrench ? 'Aucune image scannee' : 'No scanned images', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant))
                             else
                               Row(
                                 children: [
@@ -265,6 +278,51 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                         ),
                       ).animate().fadeIn(delay: 300.ms),
 
+                      SizedBox(height: AppSpacing.lg),
+
+                      // Export PDF buttons
+                      if (_patient != null)
+                        Container(
+                          padding: AppSpacing.paddingMd,
+                          decoration: BoxDecoration(
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.picture_as_pdf_outlined, color: cs.primary),
+                                  const SizedBox(width: 8),
+                                  Text(AppLocalizations.of(context).isFrench ? 'Exporter le rapport' : 'Export Report', style: context.textStyles.titleMedium?.semiBold),
+                                ],
+                              ),
+                              SizedBox(height: AppSpacing.md),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () => _printPdf(context),
+                                      icon: const Icon(Icons.print_outlined),
+                                      label: Text(AppLocalizations.of(context).isFrench ? 'Imprimer' : 'Print'),
+                                    ),
+                                  ),
+                                  SizedBox(width: AppSpacing.md),
+                                  Expanded(
+                                    child: FilledButton.icon(
+                                      onPressed: () => _sharePdf(context),
+                                      icon: const Icon(Icons.share_outlined),
+                                      label: Text(AppLocalizations.of(context).isFrench ? 'Partager PDF' : 'Share PDF'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(delay: 400.ms),
+
                       SizedBox(height: AppSpacing.xl),
                     ],
                   ),
@@ -275,6 +333,52 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _printPdf(BuildContext context) async {
+    if (_session == null || _patient == null) return;
+    
+    final isFrench = AppLocalizations.of(context).isFrench;
+    
+    try {
+      await PdfReportService.printReport(
+        session: _session!,
+        patient: _patient!,
+        isFrench: isFrench,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isFrench ? 'Erreur lors de l\'impression: $e' : 'Print error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdf(BuildContext context) async {
+    if (_session == null || _patient == null) return;
+    
+    final isFrench = AppLocalizations.of(context).isFrench;
+    
+    try {
+      await PdfReportService.sharePdf(
+        session: _session!,
+        patient: _patient!,
+        isFrench: isFrench,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isFrench ? 'Erreur lors du partage: $e' : 'Share error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -316,11 +420,11 @@ class _NotFound extends StatelessWidget {
             children: [
               Icon(Icons.error_outline, size: 72, color: cs.error),
               SizedBox(height: AppSpacing.md),
-              Text('Session introuvable', style: context.textStyles.titleLarge?.semiBold),
+              Text(AppLocalizations.of(context).isFrench ? 'Session introuvable' : 'Session not found', style: context.textStyles.titleLarge?.semiBold),
               SizedBox(height: AppSpacing.sm),
-              Text('La session demandée n\'existe pas ou a été supprimée.', textAlign: TextAlign.center, style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
+              Text(AppLocalizations.of(context).isFrench ? 'La session demandee n\'existe pas ou a ete supprimee.' : 'The requested session does not exist or has been deleted.', textAlign: TextAlign.center, style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
               SizedBox(height: AppSpacing.lg),
-              FilledButton.icon(onPressed: onBack, icon: const Icon(Icons.arrow_back), label: const Text('Retour')),
+              FilledButton.icon(onPressed: onBack, icon: const Icon(Icons.arrow_back), label: Text(AppLocalizations.of(context).back)),
             ],
           ),
         ),

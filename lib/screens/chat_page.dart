@@ -10,6 +10,7 @@ import 'package:lidarmesure/models/chat_thread.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:lidarmesure/components/app_sidebar.dart';
 import 'package:uuid/uuid.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -276,12 +277,12 @@ class _ChatPageState extends State<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Assistant IA', style: context.textStyles.titleLarge?.semiBold),
+                Text(AppLocalizations.of(context).chatTitle, style: context.textStyles.titleLarge?.semiBold),
                 Row(
                   children: [
                     Icon(Icons.auto_awesome_rounded, size: 14, color: cs.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text('Conseils orthopédiques • Temps réel',
+                    Text(AppLocalizations.of(context).isFrench ? 'Conseils orthopediques' : 'Orthopedic advice',
                         style: Theme.of(context).textTheme.labelSmall?.withColor(cs.onSurfaceVariant)),
                   ],
                 ),

@@ -15,6 +15,7 @@ import 'package:lidarmesure/components/gradient_header.dart';
 import 'package:lidarmesure/components/modern_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
@@ -92,7 +93,7 @@ class _ScanPageState extends State<ScanPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur caméra: $e')),
+        SnackBar(content: Text(AppLocalizations.read(context).isFrench ? 'Erreur camera: $e' : 'Camera error: $e')),
       );
     }
   }
@@ -100,13 +101,13 @@ class _ScanPageState extends State<ScanPage> {
   Future<void> _finishAndShowResults() async {
     if (_selectedPatient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez sélectionner un patient')),
+        SnackBar(content: Text(AppLocalizations.read(context).isFrench ? 'Veuillez selectionner un patient' : 'Please select a patient')),
       );
       return;
     }
     if (_topImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La photo de dessus est requise')),
+        SnackBar(content: Text(AppLocalizations.read(context).isFrench ? 'La photo de dessus est requise' : 'Top view photo is required')),
       );
       return;
     }
@@ -200,11 +201,12 @@ class _ScanPageState extends State<ScanPage> {
           debugPrint('✅ Session sauvegardée avec succès: $sessionId');
           
           if (mounted) {
+            final l10n = AppLocalizations.read(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Résultats sauvegardés avec succès'),
+              SnackBar(
+                content: Text(l10n.isFrench ? 'Resultats sauvegardes avec succes' : 'Results saved successfully'),
                 backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
+                duration: const Duration(seconds: 2),
               ),
             );
           }
@@ -213,7 +215,7 @@ class _ScanPageState extends State<ScanPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Attention: Erreur de sauvegarde ($e)'),
+                content: Text(AppLocalizations.read(context).isFrench ? 'Attention: Erreur de sauvegarde ($e)' : 'Warning: Save error ($e)'),
                 backgroundColor: Colors.orange,
                 duration: const Duration(seconds: 4),
               ),
@@ -292,9 +294,10 @@ class _ScanPageState extends State<ScanPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return GradientHeader(
-      title: 'Nouveau Scan',
-      subtitle: 'Scanner 3D LiDAR',
+      title: l10n.newScan,
+      subtitle: l10n.scanTitle,
       showBack: true,
       onBack: () => context.pop(),
     ).animate().fadeIn(duration: 400.ms);
@@ -330,7 +333,7 @@ class _ScanPageState extends State<ScanPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _selectedPatient == null ? 'Sélectionner un patient' : _selectedPatient!.fullName,
+                      _selectedPatient == null ? (AppLocalizations.of(context).isFrench ? 'Selectionner un patient' : 'Select a patient') : _selectedPatient!.fullName,
                       style: context.textStyles.titleMedium?.semiBold,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -359,7 +362,7 @@ class _ScanPageState extends State<ScanPage> {
           // Étape 1 : Vue de dessus (Obligatoire)
           _buildImageCard(
             context, 
-            'Vue de dessus (Obligatoire)', 
+            AppLocalizations.of(context).isFrench ? 'Vue de dessus (Obligatoire)' : 'Top view (Required)', 
             _topImage, 
             () => _takePhoto(true)
           ),
@@ -377,14 +380,14 @@ class _ScanPageState extends State<ScanPage> {
                        children: [
                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                          SizedBox(width: 8),
-                         Text('Analyse en cours...', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                         Text(AppLocalizations.of(context).isFrench ? 'Analyse en cours...' : 'Analyzing...', style: TextStyle(color: Colors.orange, fontSize: 12)),
                        ],
                      ),
                    );
                  } else if (snapshot.hasError) {
                    return Padding(
                      padding: const EdgeInsets.only(top: 8.0),
-                     child: Text('Erreur analyse: ${snapshot.error}', style: TextStyle(color: Colors.red, fontSize: 12)),
+                     child: Text(AppLocalizations.of(context).isFrench ? 'Erreur analyse: ${snapshot.error}' : 'Analysis error: ${snapshot.error}', style: TextStyle(color: Colors.red, fontSize: 12)),
                    );
                  }
                  return Padding(
@@ -394,7 +397,7 @@ class _ScanPageState extends State<ScanPage> {
                       children: [
                         Icon(Icons.check_circle, color: Colors.green, size: 16),
                         SizedBox(width: 8),
-                        Text('Analyse terminée', style: TextStyle(color: Colors.green, fontSize: 12)),
+                        Text(AppLocalizations.of(context).isFrench ? 'Analyse terminee' : 'Analysis complete', style: TextStyle(color: Colors.green, fontSize: 12)),
                       ]
                    ),
                  );
@@ -407,7 +410,7 @@ class _ScanPageState extends State<ScanPage> {
           if (_topImage != null) ...[
              _buildImageCard(
                context, 
-               'Vue de profil (Optionnel)', 
+               AppLocalizations.of(context).isFrench ? 'Vue de profil (Optionnel)' : 'Side view (Optional)', 
                _sideImage, 
                () => _takePhoto(false)
              ).animate().fadeIn().slideY(begin: 0.2),
@@ -420,7 +423,7 @@ class _ScanPageState extends State<ScanPage> {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 8.0),
-                        child: Text('Analyse profil en cours...', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                        child: Text(AppLocalizations.of(context).isFrench ? 'Analyse profil en cours...' : 'Side analysis in progress...', style: TextStyle(color: Colors.orange, fontSize: 12)),
                       );
                     }
                     return SizedBox.shrink();
@@ -470,7 +473,7 @@ class _ScanPageState extends State<ScanPage> {
                   Icon(Icons.camera_alt_outlined, size: 48, color: cs.primary),
                   SizedBox(height: AppSpacing.sm),
                   Text(title, style: context.textStyles.titleMedium?.semiBold),
-                  Text('Appuyer pour scanner', style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant)),
+                  Text(AppLocalizations.of(context).isFrench ? 'Appuyer pour scanner' : 'Tap to scan', style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant)),
                 ],
               ),
       ),
@@ -478,10 +481,15 @@ class _ScanPageState extends State<ScanPage> {
   }
 
   Widget _buildInstructions(BuildContext context) {
-    final instructions = [
-      {'icon': Icons.phone_iphone, 'title': 'Position', 'desc': 'Maintenez votre téléphone à 30cm du pied'},
-      {'icon': Icons.lightbulb_outline, 'title': 'Éclairage', 'desc': 'Assurez-vous d\'avoir un bon éclairage'},
+    final l10n = AppLocalizations.of(context);
+    final instructions = l10n.isFrench ? [
+      {'icon': Icons.phone_iphone, 'title': 'Position', 'desc': 'Maintenez votre telephone a 30cm du pied'},
+      {'icon': Icons.lightbulb_outline, 'title': 'Eclairage', 'desc': 'Assurez-vous d\'avoir un bon eclairage'},
       {'icon': Icons.accessibility_new, 'title': 'Calibration', 'desc': 'Placez un marqueur ArUco ou une carte'},
+    ] : [
+      {'icon': Icons.phone_iphone, 'title': 'Position', 'desc': 'Hold your phone 30cm from the foot'},
+      {'icon': Icons.lightbulb_outline, 'title': 'Lighting', 'desc': 'Ensure good lighting'},
+      {'icon': Icons.accessibility_new, 'title': 'Calibration', 'desc': 'Place an ArUco marker or card'},
     ];
 
     return Padding(
@@ -489,7 +497,7 @@ class _ScanPageState extends State<ScanPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Instructions', style: context.textStyles.titleLarge?.semiBold),
+          Text(l10n.isFrench ? 'Instructions' : 'Instructions', style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.md),
           ...instructions.asMap().entries.map((entry) {
             final index = entry.key;
@@ -520,8 +528,8 @@ class _ScanPageState extends State<ScanPage> {
         ),
         child: Row(
           children: [
-            Expanded(child: _buildSideOption(context, FootSide.gauche, 'Pied Gauche')),
-            Expanded(child: _buildSideOption(context, FootSide.droite, 'Pied Droit')),
+            Expanded(child: _buildSideOption(context, FootSide.gauche, AppLocalizations.of(context).leftFoot)),
+            Expanded(child: _buildSideOption(context, FootSide.droite, AppLocalizations.of(context).rightFoot)),
           ],
         ),
       ),

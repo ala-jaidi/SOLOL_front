@@ -7,8 +7,8 @@ import 'package:lidarmesure/services/pdf_service.dart';
 import 'package:lidarmesure/state/notification_center.dart';
 import 'package:lidarmesure/components/modern_button.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:lidarmesure/models/user.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 import 'package:lidarmesure/services/measurement_service.dart'; // Import nécessaire pour getImageUrl
 
@@ -99,11 +99,11 @@ class ScanResultPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Résultats du Scan', style: context.textStyles.headlineMedium?.bold),
+                Text(AppLocalizations.of(context).scanResults, style: context.textStyles.headlineMedium?.bold),
                 if (patient != null)
-                  Text('Patient: ${patient.fullName}', style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant))
+                  Text('${AppLocalizations.of(context).isFrench ? "Patient" : "Patient"}: ${patient.fullName}', style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant))
                 else
-                  Text('Analyse complète', style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(AppLocalizations.of(context).isFrench ? 'Analyse complete' : 'Complete analysis', style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
@@ -111,15 +111,6 @@ class ScanResultPage extends StatelessWidget {
             icon: Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.primary),
             onPressed: () async {
               try {
-                Uint8List? topBytes;
-                Uint8List? sideBytes;
-                if (topImage != null) {
-                  topBytes = await topImage.readAsBytes();
-                }
-                if (sideImage != null) {
-                  sideBytes = await sideImage.readAsBytes();
-                }
-
                 await PdfService.shareReport(
                   patientName: patient?.fullName,
                   rightLengthCm: '$length cm',
@@ -130,8 +121,6 @@ class ScanResultPage extends StatelessWidget {
                   analysis1: 'Posture normale',
                   analysis2: 'Légère pronation détectée',
                   analysis3: 'Recommandation: Semelles orthopédiques',
-                  topImageBytes: topBytes,
-                  sideImageBytes: sideBytes,
                 );
                 if (context.mounted) {
                   await context.read<NotificationCenter>().add(
@@ -139,13 +128,13 @@ class ScanResultPage extends StatelessWidget {
                         body: 'Le rapport du scan a été généré et partagé.',
                       );
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Rapport PDF exporté')),
+                    SnackBar(content: Text(AppLocalizations.of(context).isFrench ? 'Rapport PDF exporte' : 'PDF report exported')),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur lors de l\'export PDF: $e')),
+                    SnackBar(content: Text(AppLocalizations.of(context).isFrench ? 'Erreur lors de l\'export PDF: $e' : 'PDF export error: $e')),
                   );
                 }
               }
@@ -180,8 +169,8 @@ class ScanResultPage extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Scan réussi!', style: context.textStyles.titleMedium?.bold.withColor(Theme.of(context).colorScheme.secondary)),
-              Text('Précision: 97%', style: context.textStyles.bodySmall?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(AppLocalizations.of(context).scanSuccess, style: context.textStyles.titleMedium?.bold.withColor(Theme.of(context).colorScheme.secondary)),
+              Text('${AppLocalizations.of(context).precision}: 97%', style: context.textStyles.bodySmall?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
         ],
@@ -195,7 +184,7 @@ class ScanResultPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Mesures (Pied Droit)', style: context.textStyles.titleLarge?.semiBold),
+          Text('${AppLocalizations.of(context).measurements} (${AppLocalizations.of(context).rightFoot})', style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -231,7 +220,7 @@ class ScanResultPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Images analysées', style: context.textStyles.titleLarge?.semiBold),
+          Text(AppLocalizations.of(context).isFrench ? 'Images analysees' : 'Analyzed images', style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -240,7 +229,7 @@ class ScanResultPage extends StatelessWidget {
                   child: _ResultImageCard(
                     imageFile: topImage,
                     imageUrl: debugTopUrl,
-                    label: 'Vue de dessus',
+                    label: AppLocalizations.of(context).isFrench ? 'Vue de dessus' : 'Top view',
                   ).animate().fadeIn(delay: 700.ms).scale(begin: const Offset(0.9, 0.9)),
                 ),
               if (topImage != null && sideImage != null)
@@ -250,7 +239,7 @@ class ScanResultPage extends StatelessWidget {
                   child: _ResultImageCard(
                     imageFile: sideImage,
                     imageUrl: debugSideUrl,
-                    label: 'Vue latérale',
+                    label: AppLocalizations.of(context).isFrench ? 'Vue laterale' : 'Side view',
                   ).animate().fadeIn(delay: 800.ms).scale(begin: const Offset(0.9, 0.9)),
                 ),
             ],
@@ -272,7 +261,7 @@ class ScanResultPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Analyse', style: context.textStyles.titleLarge?.semiBold),
+          Text(AppLocalizations.of(context).isFrench ? 'Analyse' : 'Analysis', style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.md),
           ...analyses.asMap().entries.map((entry) {
             final index = entry.key;

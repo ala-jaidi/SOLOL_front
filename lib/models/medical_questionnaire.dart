@@ -32,14 +32,17 @@ class MedicalQuestionnaire {
   };
 
   factory MedicalQuestionnaire.fromJson(Map<String, dynamic> json) => MedicalQuestionnaire(
-    id: json['id'] as String,
-    cleDeLaQuestion: (json['cleDeLaQuestion'] ?? json['question']) as String,
+    id: json['id'] as String? ?? '',
+    cleDeLaQuestion: (json['cleDeLaQuestion'] ?? json['cle_de_la_question'] ?? json['question'] ?? '') as String,
     condition: json['condition'] != null 
-        ? FootCondition.values.firstWhere((e) => e.name == json['condition'])
+        ? FootCondition.values.firstWhere(
+            (e) => e.name == json['condition'],
+            orElse: () => FootCondition.halluxvalgus,
+          )
         : null,
-    reponse: json['reponse'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
+    reponse: (json['reponse'] ?? '') as String,
+    createdAt: DateTime.parse((json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()) as String),
+    updatedAt: DateTime.parse((json['updatedAt'] ?? json['updated_at'] ?? DateTime.now().toIso8601String()) as String),
   );
 
   MedicalQuestionnaire copyWith({

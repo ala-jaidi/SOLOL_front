@@ -15,6 +15,7 @@ import 'package:lidarmesure/screens/signup_page.dart';
 import 'package:lidarmesure/screens/add_patient_page.dart';
 import 'package:lidarmesure/screens/add_session_page.dart';
 import 'package:lidarmesure/screens/session_detail_page.dart';
+import 'package:lidarmesure/screens/complete_profile_page.dart';
 import 'package:lidarmesure/supabase/supabase_config.dart';
 
 class AppRouter {
@@ -24,9 +25,15 @@ class AppRouter {
       final isAuthenticated = SupabaseConfig.auth.currentUser != null;
       final isOnLoginPage = state.matchedLocation == AppRoutes.login;
       final isOnSignupPage = state.matchedLocation == AppRoutes.signup;
+      final isOnCompleteProfile = state.matchedLocation == AppRoutes.completeProfile;
       // Handle root path
       if (state.matchedLocation == '/' || state.uri.path == '/') {
         return isAuthenticated ? AppRoutes.home : AppRoutes.login;
+      }
+
+      // Allow complete-profile page for authenticated users
+      if (isOnCompleteProfile && isAuthenticated) {
+        return null;
       }
 
       if (!isAuthenticated && !isOnLoginPage && !isOnSignupPage) {
@@ -172,6 +179,13 @@ class AppRouter {
           child: const HelpPage(),
         ),
       ),
+      GoRoute(
+        path: AppRoutes.completeProfile,
+        name: 'completeProfile',
+        pageBuilder: (context, state) => NoTransitionPage(
+          child: const CompleteProfilePage(),
+        ),
+      ),
     ],
   );
 }
@@ -191,4 +205,5 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String help = '/help';
   static const String sessionDetail = '/session/:id';
+  static const String completeProfile = '/complete-profile';
 }

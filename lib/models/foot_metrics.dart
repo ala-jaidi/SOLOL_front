@@ -31,12 +31,12 @@ class FootMetrics {
 
   factory FootMetrics.fromJson(Map<String, dynamic> json) => FootMetrics(
     id: json['id'] as String,
-    side: FootSide.values.firstWhere((e) => e.name == json['side']),
-    longueur: (json['longueur'] as num).toDouble(),
-    largeur: (json['largeur'] as num).toDouble(),
-    confidence: (json['confidence'] as num).toDouble(),
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
+    side: FootSide.values.firstWhere((e) => e.name == json['side'], orElse: () => FootSide.droite),
+    longueur: (json['longueur'] as num?)?.toDouble() ?? 0.0,
+    largeur: (json['largeur'] as num?)?.toDouble() ?? 0.0,
+    confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+    createdAt: DateTime.parse((json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()) as String),
+    updatedAt: DateTime.parse((json['updatedAt'] ?? json['updated_at'] ?? DateTime.now().toIso8601String()) as String),
   );
 
   FootMetrics copyWith({

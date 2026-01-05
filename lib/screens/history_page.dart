@@ -8,6 +8,7 @@ import 'package:lidarmesure/models/user.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/components/app_sidebar.dart';
 import 'package:intl/intl.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -31,12 +32,24 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Future<void> _loadSessions() async {
     setState(() => _isLoading = true);
-    final sessions = await _sessionService.getAllSessions();
-    sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    setState(() {
-      _sessions = sessions;
-      _isLoading = false;
-    });
+    try {
+      final sessions = await _sessionService.getAllSessions();
+      sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      if (mounted) {
+        setState(() {
+          _sessions = sessions;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading sessions: $e');
+      if (mounted) {
+        setState(() {
+          _sessions = [];
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   List<Session> get _filteredSessions {
@@ -111,8 +124,10 @@ class _HistoryPageState extends State<HistoryPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Historique', style: context.textStyles.headlineMedium?.bold),
-                Text('${_sessions.length} session${_sessions.length > 1 ? 's' : ''} enregistrée${_sessions.length > 1 ? 's' : ''}', 
+                Text(AppLocalizations.of(context).historyTitle, style: context.textStyles.headlineMedium?.bold),
+                Text(AppLocalizations.of(context).isFrench 
+                    ? '${_sessions.length} session${_sessions.length > 1 ? 's' : ''} enregistree${_sessions.length > 1 ? 's' : ''}'
+                    : '${_sessions.length} session${_sessions.length > 1 ? 's' : ''} recorded', 
                   style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
@@ -129,7 +144,10 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _buildFilters(BuildContext context) {
-    final filters = ['Tous', 'Terminé', 'En cours', 'Annulé'];
+    final l10n = AppLocalizations.of(context);
+    final filters = l10n.isFrench 
+        ? ['Tous', 'Termine', 'En cours', 'Annule']
+        : ['All', 'Completed', 'Pending', 'Cancelled'];
     return Container(
       height: 50,
       margin: EdgeInsets.only(bottom: AppSpacing.md),
@@ -171,16 +189,17 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.history, size: 80, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
           SizedBox(height: AppSpacing.lg),
-          Text('Aucune session trouvée', style: context.textStyles.titleLarge?.semiBold),
+          Text(l10n.noHistory, style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.sm),
           Text(
-            'Les sessions apparaîtront ici',
+            l10n.isFrench ? 'Les sessions apparaitront ici' : 'Sessions will appear here',
             style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../state/podiatrist_profile.dart';
 import '../theme.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class PodiatristProfilePage extends StatefulWidget {
   const PodiatristProfilePage({super.key});
@@ -47,7 +48,7 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
     final profile = context.watch<PodiatristProfileState>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil podologue'),
+        title: Text(AppLocalizations.of(context).podiatristProfile),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -78,13 +79,13 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
                   ),
                   SizedBox(height: AppSpacing.lg),
 
-                  _glassField(context, label: 'Nom complet', controller: _name, icon: Icons.badge_rounded, validator: _required),
+                  _glassField(context, label: AppLocalizations.of(context).isFrench ? 'Nom complet' : 'Full name', controller: _name, icon: Icons.badge_rounded, validator: _required),
                   SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: 'Cabinet / Clinique', controller: _clinic, icon: Icons.local_hospital_outlined),
+                  _glassField(context, label: AppLocalizations.of(context).isFrench ? 'Cabinet / Clinique' : 'Clinic', controller: _clinic, icon: Icons.local_hospital_outlined),
                   SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: 'Email', controller: _email, icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                  _glassField(context, label: AppLocalizations.of(context).email, controller: _email, icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                   SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: 'Téléphone', controller: _phone, icon: Icons.phone_outlined, keyboardType: TextInputType.phone),
+                  _glassField(context, label: AppLocalizations.of(context).phone, controller: _phone, icon: Icons.phone_outlined, keyboardType: TextInputType.phone),
                   SizedBox(height: AppSpacing.md),
                   _glassField(context, label: 'Bio', controller: _bio, icon: Icons.info_outline, maxLines: 4),
 
@@ -101,7 +102,7 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
                             _bio.text = '';
                           },
                           icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Réinitialiser'),
+                          label: Text(AppLocalizations.of(context).isFrench ? 'Reinitialiser' : 'Reset'),
                         ),
                       ),
                       SizedBox(width: AppSpacing.md),
@@ -118,12 +119,12 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
                                 );
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: const Text('Profil enregistré'), backgroundColor: cs.primary),
+                                SnackBar(content: Text(AppLocalizations.of(context).isFrench ? 'Profil enregistre' : 'Profile saved'), backgroundColor: cs.primary),
                               );
                             }
                           },
                           icon: const Icon(Icons.save_rounded),
-                          label: const Text('Enregistrer'),
+                          label: Text(AppLocalizations.of(context).isFrench ? 'Enregistrer' : 'Save'),
                         ),
                       ),
                     ],
@@ -133,7 +134,7 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
                   if (profile.fullName.isNotEmpty) ...[
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Aperçu', style: context.textStyles.titleMedium?.semiBold),
+                      child: Text(AppLocalizations.of(context).isFrench ? 'Apercu' : 'Preview', style: context.textStyles.titleMedium?.semiBold),
                     ),
                     SizedBox(height: AppSpacing.md),
                     _previewCard(context, profile),
@@ -147,7 +148,7 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
     );
   }
 
-  String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Champ requis' : null;
+  String? _required(String? v) => (v == null || v.trim().isEmpty) ? 'Required' : null;
 
   Widget _glassField(
     BuildContext context, {

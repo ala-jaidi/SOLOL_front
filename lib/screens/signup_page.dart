@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lidarmesure/auth/supabase_auth_manager.dart';
 import 'package:lidarmesure/components/modern_button.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -42,12 +43,12 @@ class _SignupPageState extends State<SignupPage> {
 
       if (user != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Compte créé avec succès !'),
+          SnackBar(
+            content: Text(AppLocalizations.read(context).signupSuccess),
             backgroundColor: Colors.green,
           ),
         );
-        context.go('/home');
+        context.go('/complete-profile');
       }
     } catch (e) {
       if (mounted) {
@@ -108,7 +109,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Créer un compte',
+                        AppLocalizations.of(context).signup,
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
@@ -117,7 +118,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Rejoignez LiDAR Mesure aujourd\'hui',
+                        AppLocalizations.of(context).isFrench ? 'Rejoignez LiDAR Mesure' : 'Join LiDAR Mesure',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -126,8 +127,8 @@ class _SignupPageState extends State<SignupPage> {
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context).email,
                           hintText: 'exemple@email.fr',
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
@@ -135,10 +136,10 @@ class _SignupPageState extends State<SignupPage> {
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Veuillez entrer votre email';
+                            return AppLocalizations.of(context).pleaseEnterEmail;
                           }
                           if (!value.contains('@')) {
-                            return 'Email invalide';
+                            return AppLocalizations.of(context).invalidEmail;
                           }
                           return null;
                         },
@@ -147,7 +148,7 @@ class _SignupPageState extends State<SignupPage> {
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
-                          labelText: 'Mot de passe',
+                          labelText: AppLocalizations.of(context).password,
                           hintText: '••••••••',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
@@ -164,10 +165,10 @@ class _SignupPageState extends State<SignupPage> {
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Veuillez entrer un mot de passe';
+                            return AppLocalizations.of(context).pleaseEnterPassword;
                           }
                           if (value.length < 6) {
-                            return 'Le mot de passe doit contenir au moins 6 caractères';
+                            return AppLocalizations.of(context).passwordTooShort;
                           }
                           return null;
                         },
@@ -176,7 +177,7 @@ class _SignupPageState extends State<SignupPage> {
                       TextFormField(
                         controller: _confirmPasswordController,
                         decoration: InputDecoration(
-                          labelText: 'Confirmer le mot de passe',
+                          labelText: AppLocalizations.of(context).confirmPassword,
                           hintText: '••••••••',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
@@ -194,17 +195,17 @@ class _SignupPageState extends State<SignupPage> {
                         onFieldSubmitted: (_) => _handleSignup(),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Veuillez confirmer votre mot de passe';
+                            return AppLocalizations.of(context).pleaseConfirmPassword;
                           }
                           if (value != _passwordController.text) {
-                            return 'Les mots de passe ne correspondent pas';
+                            return AppLocalizations.of(context).passwordsDoNotMatch;
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 24),
                       ModernButton(
-                        label: 'S\'inscrire',
+                        label: AppLocalizations.of(context).signup,
                         onPressed: _isLoading ? null : _handleSignup,
                         loading: _isLoading,
                         expand: true,
@@ -214,12 +215,12 @@ class _SignupPageState extends State<SignupPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Vous avez déjà un compte ? ',
+                            AppLocalizations.of(context).alreadyHaveAccount,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           TextButton(
                             onPressed: () => context.pop(),
-                            child: const Text('Se connecter'),
+                            child: Text(AppLocalizations.of(context).login),
                           ),
                         ],
                       ),

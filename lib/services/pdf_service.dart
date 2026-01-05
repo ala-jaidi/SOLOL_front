@@ -21,24 +21,17 @@ class PdfService {
     String? analysis3,
     String? topImageAsset,
     String? sideImageAsset,
-    Uint8List? topImageBytes,
-    Uint8List? sideImageBytes,
   }) async {
     final doc = pw.Document();
 
     pw.ImageProvider? topImage;
     pw.ImageProvider? sideImage;
     try {
-      if (topImageBytes != null) {
-        topImage = pw.MemoryImage(topImageBytes);
-      } else if (topImageAsset != null) {
+      if (topImageAsset != null) {
         final bytes = await rootBundle.load(topImageAsset);
         topImage = pw.MemoryImage(bytes.buffer.asUint8List());
       }
-      
-      if (sideImageBytes != null) {
-        sideImage = pw.MemoryImage(sideImageBytes);
-      } else if (sideImageAsset != null) {
+      if (sideImageAsset != null) {
         final bytes = await rootBundle.load(sideImageAsset);
         sideImage = pw.MemoryImage(bytes.buffer.asUint8List());
       }
@@ -234,8 +227,6 @@ class PdfService {
     String? analysis3,
     String? topImageAsset,
     String? sideImageAsset,
-    Uint8List? topImageBytes,
-    Uint8List? sideImageBytes,
   }) async {
     try {
       final data = await buildReport(
@@ -250,8 +241,6 @@ class PdfService {
         analysis3: analysis3,
         topImageAsset: topImageAsset,
         sideImageAsset: sideImageAsset,
-        topImageBytes: topImageBytes,
-        sideImageBytes: sideImageBytes,
       );
       await Printing.sharePdf(bytes: data, filename: 'rapport_pied.pdf');
     } catch (e, st) {

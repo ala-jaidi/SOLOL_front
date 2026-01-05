@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lidarmesure/auth/supabase_auth_manager.dart';
 import 'package:lidarmesure/components/modern_button.dart';
 import 'package:lidarmesure/theme.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -109,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Connectez-vous à votre compte',
+                        AppLocalizations.of(context).isFrench ? 'Connectez-vous a votre compte' : 'Sign in to your account',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -118,8 +119,8 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context).email,
                           hintText: 'exemple@email.fr',
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
@@ -127,10 +128,10 @@ class _LoginPageState extends State<LoginPage> {
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Veuillez entrer votre email';
+                            return AppLocalizations.of(context).pleaseEnterEmail;
                           }
                           if (!value.contains('@')) {
-                            return 'Email invalide';
+                            return AppLocalizations.of(context).invalidEmail;
                           }
                           return null;
                         },
@@ -139,7 +140,7 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
-                          labelText: 'Mot de passe',
+                          labelText: AppLocalizations.of(context).password,
                           hintText: '••••••••',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
@@ -157,17 +158,17 @@ class _LoginPageState extends State<LoginPage> {
                         onFieldSubmitted: (_) => _handleLogin(),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Veuillez entrer votre mot de passe';
+                            return AppLocalizations.of(context).pleaseEnterPassword;
                           }
                           if (value.length < 6) {
-                            return 'Le mot de passe doit contenir au moins 6 caractères';
+                            return AppLocalizations.of(context).passwordTooShort;
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 24),
                       ModernButton(
-                        label: 'Se connecter',
+                        label: AppLocalizations.of(context).login,
                         onPressed: _isLoading ? null : _handleLogin,
                         loading: _isLoading,
                         expand: true,
@@ -177,12 +178,12 @@ class _LoginPageState extends State<LoginPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Pas encore de compte ? ',
+                            AppLocalizations.of(context).noAccount,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           TextButton(
                             onPressed: () => context.push('/signup'),
-                            child: const Text('S\'inscrire'),
+                            child: Text(AppLocalizations.of(context).signup),
                           ),
                         ],
                       ),

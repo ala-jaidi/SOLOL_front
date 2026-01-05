@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:lidarmesure/state/app_settings.dart';
 import 'package:lidarmesure/supabase/supabase_config.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class AppSideBar extends StatelessWidget {
   const AppSideBar({super.key});
@@ -14,6 +15,7 @@ class AppSideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final settings = context.watch<AppSettings>();
+    final l10n = AppLocalizations.of(context);
 
     return Drawer(
       width: MediaQuery.of(context).size.width.clamp(280, 360),
@@ -75,8 +77,8 @@ class AppSideBar extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('LiDAR Mesure', style: Theme.of(context).textTheme.titleLarge?.semiBold),
-                            Text('Espace professionnel', style: Theme.of(context).textTheme.labelSmall?.withColor(cs.onSurfaceVariant)),
+                            Text(l10n.appName, style: Theme.of(context).textTheme.titleLarge?.semiBold),
+                            Text(l10n.professionalSpace, style: Theme.of(context).textTheme.labelSmall?.withColor(cs.onSurfaceVariant)),
                           ],
                         ),
                       ),
@@ -88,16 +90,16 @@ class AppSideBar extends StatelessWidget {
                   ).animate().fadeIn().moveY(begin: -8, end: 0),
                   SizedBox(height: AppSpacing.lg),
                   // Use push so back button works when coming from the sidebar
-                  _NavItem(icon: Icons.document_scanner_outlined, label: 'Scanner', onTap: () => context.push('/scan')),
-                  _NavItem(icon: Icons.history, label: 'Historique', onTap: () => context.push('/history')),
-                  _NavItem(icon: Icons.medical_information_outlined, label: 'Profil podologue', onTap: () => context.push('/profile')),
-                  _NavItem(icon: Icons.notifications_none_rounded, label: 'Notifications', onTap: () => context.push('/notifications')),
-                  _NavItem(icon: Icons.help_outline_rounded, label: 'Aide', onTap: () => context.push('/help')),
+                  _NavItem(icon: Icons.document_scanner_outlined, label: l10n.scanner, onTap: () => context.push('/scan')),
+                  _NavItem(icon: Icons.history, label: l10n.history, onTap: () => context.push('/history')),
+                  _NavItem(icon: Icons.medical_information_outlined, label: l10n.podiatristProfile, onTap: () => context.push('/profile')),
+                  _NavItem(icon: Icons.notifications_none_rounded, label: l10n.notifications, onTap: () => context.push('/notifications')),
+                  _NavItem(icon: Icons.help_outline_rounded, label: l10n.help, onTap: () => context.push('/help')),
                   // Removed redundant entries: Accueil, Patients, Assistant IA
                   SizedBox(height: AppSpacing.lg),
                   Divider(color: cs.outline.withValues(alpha: 0.12), height: 1),
                   SizedBox(height: AppSpacing.lg),
-                  Text('Préférences', style: Theme.of(context).textTheme.titleMedium?.semiBold),
+                  Text(l10n.preferences, style: Theme.of(context).textTheme.titleMedium?.semiBold),
                   SizedBox(height: AppSpacing.md),
                   // Theme toggle
                   Container(
@@ -111,10 +113,10 @@ class AppSideBar extends StatelessWidget {
                       children: [
                         Icon(Icons.dark_mode_outlined, color: cs.onSurfaceVariant),
                         const SizedBox(width: 8),
-                        Expanded(child: Text('Apparence', style: Theme.of(context).textTheme.bodyMedium)),
+                        Expanded(child: Text(l10n.appearance, style: Theme.of(context).textTheme.bodyMedium)),
                         _SegmentedTwo(
-                          left: 'Clair',
-                          right: 'Sombre',
+                          left: l10n.light,
+                          right: l10n.dark,
                           valueRight: settings.isDark,
                           onChanged: (isRight) => settings.setThemeMode(isRight ? ThemeMode.dark : ThemeMode.light),
                         ),
@@ -137,7 +139,7 @@ class AppSideBar extends StatelessWidget {
                           children: [
                             Icon(Icons.language_rounded, color: cs.onSurfaceVariant),
                             const SizedBox(width: 8),
-                            Expanded(child: Text('Langue', style: Theme.of(context).textTheme.bodyMedium)),
+                            Expanded(child: Text(l10n.language, style: Theme.of(context).textTheme.bodyMedium)),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -167,13 +169,11 @@ class AppSideBar extends StatelessWidget {
                       final confirmed = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Se déconnecter ?'),
-                          content: const Text(
-                            'Êtes-vous sûr de vouloir vous déconnecter ?'
-                          ),
+                          title: Text('${l10n.logout} ?'),
+                          content: Text(l10n.logoutConfirm),
                           actions: [
-                            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
-                            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Déconnecter')),
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.cancel)),
+                            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.logout)),
                           ],
                         ),
                       );
@@ -203,7 +203,7 @@ class AppSideBar extends StatelessWidget {
                         children: [
                           Icon(Icons.logout_rounded, color: cs.error),
                           const SizedBox(width: 8),
-                          Text('Se déconnecter', style: Theme.of(context).textTheme.labelLarge?.semiBold.withColor(cs.error)),
+                          Text(l10n.logout, style: Theme.of(context).textTheme.labelLarge?.semiBold.withColor(cs.error)),
                         ],
                       ),
                     ),

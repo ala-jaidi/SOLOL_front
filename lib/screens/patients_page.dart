@@ -6,6 +6,7 @@ import 'package:lidarmesure/models/user.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/components/app_sidebar.dart';
 import 'package:lidarmesure/components/gradient_header.dart';
+import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class PatientsPage extends StatefulWidget {
   const PatientsPage({super.key});
@@ -150,15 +151,20 @@ class _PatientsPageState extends State<PatientsPage> {
         onPressed: () => context.push('/add-patient'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         icon: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
-        label: Text('Nouveau Patient', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+        label: Text(AppLocalizations.of(context).newPatient, style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
       ).animate().scale(delay: 400.ms),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final count = _patients.length;
+    final subtitle = l10n.isFrench 
+        ? '$count patient${count > 1 ? 's' : ''} enregistre${count > 1 ? 's' : ''}'
+        : '$count patient${count > 1 ? 's' : ''} registered';
     return GradientHeader(
-      title: 'Mes Patients',
-      subtitle: '${_patients.length} patient${_patients.length > 1 ? 's' : ''} enregistré${_patients.length > 1 ? 's' : ''}',
+      title: l10n.myPatients.replaceAll('\n', ' '),
+      subtitle: subtitle,
       showBack: true,
       onBack: () => context.pop(),
       trailing: Builder(
@@ -172,6 +178,7 @@ class _PatientsPageState extends State<PatientsPage> {
 
   Widget _buildSearchBar(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: AppSpacing.horizontalLg,
       child: Column(
@@ -188,7 +195,7 @@ class _PatientsPageState extends State<PatientsPage> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: _filterPatients,
-                    decoration: InputDecoration(hintText: 'Rechercher un patient...', border: InputBorder.none, hintStyle: TextStyle(color: cs.onSurfaceVariant)),
+                    decoration: InputDecoration(hintText: l10n.searchPatients, border: InputBorder.none, hintStyle: TextStyle(color: cs.onSurfaceVariant)),
                   ),
                 ),
                 if (_searchController.text.isNotEmpty)
@@ -209,13 +216,13 @@ class _PatientsPageState extends State<PatientsPage> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _chip(context, 'Tous', _genderFilter == 'Tous', () { setState(() { _genderFilter = 'Tous'; }); _filterPatients(_searchController.text); }),
+                    _chip(context, l10n.isFrench ? 'Tous' : 'All', _genderFilter == 'Tous', () { setState(() { _genderFilter = 'Tous'; }); _filterPatients(_searchController.text); }),
                     const SizedBox(width: 8),
-                    _chip(context, 'Homme', _genderFilter == 'Homme', () { setState(() { _genderFilter = 'Homme'; }); _filterPatients(_searchController.text); }),
+                    _chip(context, l10n.male, _genderFilter == 'Homme', () { setState(() { _genderFilter = 'Homme'; }); _filterPatients(_searchController.text); }),
                     const SizedBox(width: 8),
-                    _chip(context, 'Femme', _genderFilter == 'Femme', () { setState(() { _genderFilter = 'Femme'; }); _filterPatients(_searchController.text); }),
+                    _chip(context, l10n.female, _genderFilter == 'Femme', () { setState(() { _genderFilter = 'Femme'; }); _filterPatients(_searchController.text); }),
                     const SizedBox(width: 8),
-                    _chip(context, 'Autre', _genderFilter == 'Autre', () { setState(() { _genderFilter = 'Autre'; }); _filterPatients(_searchController.text); }),
+                    _chip(context, l10n.other, _genderFilter == 'Autre', () { setState(() { _genderFilter = 'Autre'; }); _filterPatients(_searchController.text); }),
                   ],
                 ),
               ),
@@ -230,11 +237,12 @@ class _PatientsPageState extends State<PatientsPage> {
 
   Widget _segSort(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(color: cs.surface.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(999), border: Border.all(color: cs.outline.withValues(alpha: 0.12))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        _segBtn(context, 'Récent', _sort == 'Récent', () { setState(() { _sort = 'Récent'; }); _filterPatients(_searchController.text); }),
-        _segBtn(context, 'Nom', _sort == 'Nom', () { setState(() { _sort = 'Nom'; }); _filterPatients(_searchController.text); }),
+        _segBtn(context, l10n.isFrench ? 'Recent' : 'Recent', _sort == 'Récent', () { setState(() { _sort = 'Récent'; }); _filterPatients(_searchController.text); }),
+        _segBtn(context, l10n.isFrench ? 'Nom' : 'Name', _sort == 'Nom', () { setState(() { _sort = 'Nom'; }); _filterPatients(_searchController.text); }),
       ]),
     );
   }
@@ -274,18 +282,19 @@ class _PatientsPageState extends State<PatientsPage> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.person_search, size: 80, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
           SizedBox(height: AppSpacing.lg),
-          Text('Aucun patient trouvé', style: context.textStyles.titleLarge?.semiBold),
+          Text(l10n.noPatientFound, style: context.textStyles.titleLarge?.semiBold),
           SizedBox(height: AppSpacing.sm),
           Text(
             _searchController.text.isEmpty
-                ? 'Ajoutez votre premier patient'
-                : 'Essayez une autre recherche',
+                ? (l10n.isFrench ? 'Ajoutez votre premier patient' : 'Add your first patient')
+                : (l10n.isFrench ? 'Essayez une autre recherche' : 'Try another search'),
             style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -384,15 +393,15 @@ class _PatientCard extends StatelessWidget {
                   ]),
                   SizedBox(height: AppSpacing.xs),
                   Wrap(spacing: AppSpacing.md, runSpacing: 6, children: [
-                    _InfoChip(icon: Icons.cake_outlined, label: '${patient.age} ans'),
-                    _InfoChip(icon: Icons.straighten, label: 'Pointure ${patient.pointure}'),
+                    _InfoChip(icon: Icons.cake_outlined, label: '${patient.age} ${AppLocalizations.of(context).isFrench ? 'ans' : 'yrs'}'),
+                    _InfoChip(icon: Icons.straighten, label: '${AppLocalizations.of(context).isFrench ? 'Pointure' : 'Size'} ${patient.pointure}'),
                     _InfoChip(icon: Icons.phone_outlined, label: patient.telephone),
                   ]),
                   SizedBox(height: AppSpacing.sm),
                   Row(children: [
                     _PillButton(
                       icon: Icons.person_outline,
-                      label: 'Fiche',
+                      label: AppLocalizations.of(context).isFrench ? 'Fiche' : 'Profile',
                       onPressed: onTap,
                       background: cs.primary,
                       foreground: cs.onPrimary,

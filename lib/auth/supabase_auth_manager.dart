@@ -46,8 +46,21 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager {
       );
 
       if (response.user != null) {
-        // Create user profile in users table
-        return await _createUserProfile(response.user!, email);
+        // Try to create user profile in users table
+        final profile = await _createUserProfile(response.user!, email);
+        if (profile != null) {
+          return profile;
+        }
+        // Even if profile creation fails, return a minimal user object
+        // so the signup flow can continue to complete-profile page
+        return User(
+          id: response.user!.id,
+          email: email,
+          nom: email.split('@')[0],
+          role: 'podologue',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
       }
       return null;
     } on sb.AuthException catch (e) {
@@ -55,7 +68,7 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager {
       throw Exception(e.message);
     } catch (e) {
       debugPrint('createAccountWithEmail error: $e');
-      throw Exception('Erreur de création de compte');
+      throw Exception('Erreur de creation de compte');
     }
   }
 
@@ -158,7 +171,7 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager {
     }
   }
 
-  /// Create user profile in database
+  /// Create user profile in database (uses upsert to avoid duplicate key errors)
   Future<User?> _createUserProfile(sb.User authUser, String email) async {
     try {
       final userData = {
@@ -172,7 +185,7 @@ class SupabaseAuthManager extends AuthManager with EmailSignInManager {
 
       final data = await SupabaseConfig.client
           .from('users')
-          .insert(userData)
+          .upsert(userData, onConflict: 'id')
           .select()
           .single();
 
