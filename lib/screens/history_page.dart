@@ -41,10 +41,22 @@ class _HistoryPageState extends State<HistoryPage> {
 
   List<Session> get _filteredSessions {
     if (_selectedFilter == 'Tous') return _sessions;
-    final status = SessionStatus.values.firstWhere(
-      (s) => s.name == _selectedFilter.toLowerCase().replaceAll('é', 'e'),
-      orElse: () => SessionStatus.completed,
-    );
+    
+    SessionStatus status;
+    switch (_selectedFilter) {
+      case 'Terminé':
+        status = SessionStatus.completed;
+        break;
+      case 'En cours':
+        status = SessionStatus.pending;
+        break;
+      case 'Annulé':
+        status = SessionStatus.cancelled;
+        break;
+      default:
+        status = SessionStatus.completed;
+    }
+    
     return _sessions.where((s) => s.status == status).toList();
   }
 
