@@ -206,44 +206,44 @@ ThemeData get lightTheme => ThemeData(
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: ButtonStyle(
-      elevation: const MaterialStatePropertyAll(0),
-      shape: MaterialStatePropertyAll(
+      elevation: const WidgetStatePropertyAll(0),
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
-      minimumSize: const MaterialStatePropertyAll(Size(48, 44)),
-      foregroundColor: const MaterialStatePropertyAll(LightModeColors.lightOnPrimary),
-      backgroundColor: const MaterialStatePropertyAll(LightModeColors.lightPrimary),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+      minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
+      foregroundColor: const WidgetStatePropertyAll(LightModeColors.lightOnPrimary),
+      backgroundColor: const WidgetStatePropertyAll(LightModeColors.lightPrimary),
     ),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: ButtonStyle(
-      shape: MaterialStatePropertyAll(
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      side: const MaterialStatePropertyAll(BorderSide(color: LightModeColors.lightPrimary, width: 1.2)),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 18, vertical: 12)),
-      foregroundColor: const MaterialStatePropertyAll(LightModeColors.lightPrimary),
+      side: const WidgetStatePropertyAll(BorderSide(color: LightModeColors.lightPrimary, width: 1.2)),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18, vertical: 12)),
+      foregroundColor: const WidgetStatePropertyAll(LightModeColors.lightPrimary),
     ),
   ),
   textButtonTheme: TextButtonThemeData(
     style: ButtonStyle(
-      shape: MaterialStatePropertyAll(
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-      foregroundColor: const MaterialStatePropertyAll(LightModeColors.lightPrimary),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+      foregroundColor: const WidgetStatePropertyAll(LightModeColors.lightPrimary),
     ),
   ),
   iconButtonTheme: IconButtonThemeData(
     style: ButtonStyle(
-      padding: const MaterialStatePropertyAll(EdgeInsets.all(10)),
-      minimumSize: const MaterialStatePropertyAll(Size(40, 40)),
-      shape: MaterialStatePropertyAll(
+      padding: const WidgetStatePropertyAll(EdgeInsets.all(10)),
+      minimumSize: const WidgetStatePropertyAll(Size(40, 40)),
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      backgroundColor: const MaterialStatePropertyAll(LightModeColors.lightSurfaceVariant),
-      foregroundColor: const MaterialStatePropertyAll(LightModeColors.lightOnSurface),
+      backgroundColor: const WidgetStatePropertyAll(LightModeColors.lightSurfaceVariant),
+      foregroundColor: const WidgetStatePropertyAll(LightModeColors.lightOnSurface),
     ),
   ),
   floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -320,44 +320,44 @@ ThemeData get darkTheme => ThemeData(
   ),
   filledButtonTheme: FilledButtonThemeData(
     style: ButtonStyle(
-      elevation: const MaterialStatePropertyAll(0),
-      shape: MaterialStatePropertyAll(
+      elevation: const WidgetStatePropertyAll(0),
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
-      minimumSize: const MaterialStatePropertyAll(Size(48, 44)),
-      foregroundColor: const MaterialStatePropertyAll(DarkModeColors.darkOnPrimary),
-      backgroundColor: const MaterialStatePropertyAll(DarkModeColors.darkPrimary),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+      minimumSize: const WidgetStatePropertyAll(Size(48, 44)),
+      foregroundColor: const WidgetStatePropertyAll(DarkModeColors.darkOnPrimary),
+      backgroundColor: const WidgetStatePropertyAll(DarkModeColors.darkPrimary),
     ),
   ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: ButtonStyle(
-      shape: MaterialStatePropertyAll(
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      side: const MaterialStatePropertyAll(BorderSide(color: DarkModeColors.darkPrimary, width: 1.2)),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 18, vertical: 12)),
-      foregroundColor: const MaterialStatePropertyAll(DarkModeColors.darkPrimary),
+      side: const WidgetStatePropertyAll(BorderSide(color: DarkModeColors.darkPrimary, width: 1.2)),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18, vertical: 12)),
+      foregroundColor: const WidgetStatePropertyAll(DarkModeColors.darkPrimary),
     ),
   ),
   textButtonTheme: TextButtonThemeData(
     style: ButtonStyle(
-      shape: MaterialStatePropertyAll(
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-      foregroundColor: const MaterialStatePropertyAll(DarkModeColors.darkPrimary),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+      foregroundColor: const WidgetStatePropertyAll(DarkModeColors.darkPrimary),
     ),
   ),
   iconButtonTheme: IconButtonThemeData(
     style: ButtonStyle(
-      padding: const MaterialStatePropertyAll(EdgeInsets.all(10)),
-      minimumSize: const MaterialStatePropertyAll(Size(40, 40)),
-      shape: MaterialStatePropertyAll(
+      padding: const WidgetStatePropertyAll(EdgeInsets.all(10)),
+      minimumSize: const WidgetStatePropertyAll(Size(40, 40)),
+      shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      backgroundColor: const MaterialStatePropertyAll(DarkModeColors.darkSurfaceVariant),
-      foregroundColor: const MaterialStatePropertyAll(DarkModeColors.darkOnSurface),
+      backgroundColor: const WidgetStatePropertyAll(DarkModeColors.darkSurfaceVariant),
+      foregroundColor: const WidgetStatePropertyAll(DarkModeColors.darkOnSurface),
     ),
   ),
   floatingActionButtonTheme: const FloatingActionButtonThemeData(
