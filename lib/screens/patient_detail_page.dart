@@ -172,7 +172,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           SizedBox(height: AppSpacing.md),
           Text(_patient!.fullName, style: context.textStyles.headlineMedium?.bold).animate().fadeIn(delay: 300.ms),
           SizedBox(height: AppSpacing.xs),
-          Text('${_patient!.age} ans • ${_patient!.sexeLabel}', 
+          Text('${_patient!.age} ${AppLocalizations.of(context).isFrench ? 'ans' : 'yrs'} • ${_patient!.sexeLabel(isFrench: AppLocalizations.of(context).isFrench)}', 
             style: context.textStyles.bodyLarge?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)).animate().fadeIn(delay: 400.ms),
           SizedBox(height: AppSpacing.lg),
           Container(

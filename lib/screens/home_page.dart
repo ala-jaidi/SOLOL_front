@@ -91,26 +91,121 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildHeader(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final userName = _currentUser?.fullName ?? 'professionnel';
-    return GradientHeader(
-      title: l10n.hello(userName),
-      subtitle: l10n.welcomeSubtitle,
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(Icons.analytics_outlined, color: Theme.of(context).colorScheme.onPrimary, size: 24),
+    final cs = Theme.of(context).colorScheme;
+    final firstName = _currentUser?.fullName.split(' ').first ?? (l10n.isFrench ? 'Docteur' : 'Doctor');
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 
+        ? (l10n.isFrench ? 'Bonjour' : 'Good morning')
+        : hour < 18 
+            ? (l10n.isFrench ? 'Bon après-midi' : 'Good afternoon')
+            : (l10n.isFrench ? 'Bonsoir' : 'Good evening');
+
+    return Padding(
+      padding: AppSpacing.paddingLg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: Avatar + Settings
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Avatar with status indicator
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [cs.primary, cs.primary.withValues(alpha: 0.6)],
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: cs.surface,
+                  child: Text(
+                    firstName.substring(0, 1).toUpperCase(),
+                    style: context.textStyles.titleMedium?.bold.withColor(cs.primary),
+                  ),
+                ),
+              ),
+              // Settings button
+              Builder(
+                builder: (ctx) => Container(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.tune_rounded, color: cs.onSurfaceVariant, size: 20),
+                    onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+                  ),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: 300.ms),
+          
+          SizedBox(height: AppSpacing.lg),
+          
+          // Greeting - Large and bold
+          Text(
+            '$greeting,',
+            style: context.textStyles.bodyLarge?.withColor(cs.onSurfaceVariant),
+          ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
+          
+          const SizedBox(height: 4),
+          
+          // Name - Hero text
+          Text(
+            firstName,
+            style: context.textStyles.displaySmall?.bold.withColor(cs.onSurface),
+          ).animate().fadeIn(delay: 150.ms).slideX(begin: -0.1),
+          
+          SizedBox(height: AppSpacing.sm),
+          
+          // Subtitle with icon - Dynamic specialty
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.workspace_premium_outlined, size: 16, color: cs.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _buildProfessionalLabel(l10n),
+                  style: context.textStyles.bodyMedium?.medium.withColor(cs.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(delay: 200.ms),
+        ],
       ),
-      trailing: Builder(
-        builder: (ctx) => IconButton(
-          icon: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => Scaffold.of(ctx).openEndDrawer(),
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.2, end: 0);
+    );
+  }
+
+  String _capitalize(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  String _buildProfessionalLabel(AppLocalizations l10n) {
+    final specialty = _currentUser?.specialite;
+    final role = _currentUser?.role ?? 'podologue';
+    
+    if (specialty != null && specialty.isNotEmpty) {
+      return l10n.isFrench 
+          ? 'Espace professionnel · $specialty'
+          : 'Professional space · $specialty';
+    }
+    
+    // Fallback based on role
+    final roleLabel = l10n.isFrench
+        ? (role == 'podologue' ? 'Podologue' : _capitalize(role))
+        : (role == 'podologue' ? 'Podiatrist' : _capitalize(role));
+    
+    return l10n.isFrench 
+        ? 'Espace professionnel · $roleLabel'
+        : 'Professional space · $roleLabel';
   }
 
   Widget _buildQuickActions(BuildContext context) {

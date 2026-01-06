@@ -250,10 +250,11 @@ class ScanResultPage extends StatelessWidget {
   }
 
   Widget _buildAnalysis(BuildContext context) {
+    final isFrench = AppLocalizations.of(context).isFrench;
     final analyses = [
-      {'icon': Icons.check_circle, 'title': 'Posture normale', 'color': Theme.of(context).colorScheme.secondary},
-      {'icon': Icons.info_outline, 'title': 'Légère pronation détectée', 'color': Theme.of(context).colorScheme.tertiary},
-      {'icon': Icons.lightbulb_outline, 'title': 'Recommandation: Semelles orthopédiques', 'color': Theme.of(context).colorScheme.primary},
+      {'icon': Icons.check_circle, 'title': isFrench ? 'Posture normale' : 'Normal posture', 'color': Theme.of(context).colorScheme.secondary},
+      {'icon': Icons.info_outline, 'title': isFrench ? 'Légère pronation détectée' : 'Slight pronation detected', 'color': Theme.of(context).colorScheme.tertiary},
+      {'icon': Icons.lightbulb_outline, 'title': isFrench ? 'Recommandation: Semelles orthopédiques' : 'Recommendation: Orthopedic insoles', 'color': Theme.of(context).colorScheme.primary},
     ];
 
     return Padding(

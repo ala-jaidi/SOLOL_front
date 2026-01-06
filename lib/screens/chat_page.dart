@@ -301,50 +301,7 @@ class _ChatPageState extends State<ChatPage> {
         ],
       ),
       body: SafeArea(
-        child: Stack(
-          children: [
-            // Advanced holographic background
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      cs.surface,
-                      cs.surfaceContainerHighest,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Soft moving gradient blobs
-            _AnimatedBlob(
-              colorA: cs.primary.withValues(alpha: 0.18),
-              colorB: cs.tertiary.withValues(alpha: 0.12),
-              size: 280,
-              top: -60,
-              left: -40,
-              durationMs: 9000,
-            ),
-            _AnimatedBlob(
-              colorA: cs.secondary.withValues(alpha: 0.14),
-              colorB: cs.primary.withValues(alpha: 0.10),
-              size: 320,
-              bottom: -80,
-              right: -60,
-              durationMs: 11000,
-            ),
-            // Subtle tech grid overlay
-            Positioned.fill(
-              child: IgnorePointer(
-                ignoring: true,
-                child: CustomPaint(
-                  painter: _GridOverlay(color: cs.outline.withValues(alpha: 0.06)),
-                ),
-              ),
-            ),
-            Column(
+        child: Column(
               children: [
                 _TemplateBar(
                   templates: _templates,
@@ -409,21 +366,6 @@ class _ChatPageState extends State<ChatPage> {
                 _Composer(onSend: _send, controller: _controller),
               ],
             ),
-            // Jump to bottom button
-            Positioned(
-              right: 16,
-              bottom: 96,
-              child: AnimatedOpacity(
-                opacity: _showJumpToBottom ? 1 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: Visibility(
-                  visible: _showJumpToBottom,
-                  child: _NeonFab(onTap: _scrollToBottom),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -433,6 +375,7 @@ bool _isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
+/// Clean composer - Revolut-inspired minimal input
 class _Composer extends StatelessWidget {
   final VoidCallback onSend;
   final TextEditingController controller;
@@ -442,72 +385,56 @@ class _Composer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
-        // Remove non-uniform border to avoid CanvasKit bug; separator is added in parent
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              border: Border.all(color: cs.outline.withValues(alpha: 0.14)),
-            ),
-            child: Row(
-              children: [
-                _GlassIconButton(
-                  icon: Icons.attach_file_rounded,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Pièces jointes bientôt disponibles'), backgroundColor: cs.inversePrimary),
-                    );
-                  },
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      color: cs.surface,
+      child: Row(
+        children: [
+          // Input field
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.send,
+                style: Theme.of(context).textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: l10n.isFrench ? 'Écrire un message...' : 'Write a message...',
+                  hintStyle: TextStyle(color: cs.onSurfaceVariant),
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    child: TextField(
-                      controller: controller,
-                      minLines: 1,
-                      maxLines: 5,
-                      textInputAction: TextInputAction.send,
-                      decoration: InputDecoration(
-                        hintText: 'Écrire un message…',
-                        filled: true,
-                        fillColor: cs.surface.withValues(alpha: 0.0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.0)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          borderSide: BorderSide(color: Colors.transparent),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.6)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                      onSubmitted: (_) => onSend(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _PulsingSendButton(onTap: onSend),
-              ],
+                onSubmitted: (_) => onSend(),
+              ),
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          // Send button - clean accent circle
+          Material(
+            color: cs.primary,
+            borderRadius: BorderRadius.circular(24),
+            child: InkWell(
+              onTap: onSend,
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -546,6 +473,7 @@ class _MessageRow extends StatelessWidget {
   }
 }
 
+/// Premium message bubble - Revolut-inspired clean design
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   const _MessageBubble({required this.message});
@@ -554,28 +482,22 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isUser = message.isUser;
-    final fg = isUser ? cs.onPrimary : cs.onSurface;
-    final radius = BorderRadius.only(
-      topLeft: Radius.circular(AppRadius.lg),
-      topRight: Radius.circular(AppRadius.lg),
-      bottomLeft: Radius.circular(isUser ? AppRadius.lg : AppRadius.sm),
-      bottomRight: Radius.circular(isUser ? AppRadius.sm : AppRadius.lg),
-    );
-
+    
+    // Clean, minimal bubble design
+    final radius = BorderRadius.circular(18);
+    
+    // User: solid accent color, AI: subtle elevated surface
     final decoration = isUser
         ? BoxDecoration(
             borderRadius: radius,
-            gradient: LinearGradient(
-              colors: [cs.primary, cs.tertiary.withValues(alpha: 0.85)],
-              begin: Alignment.bottomLeft,
-              end: Alignment.topRight,
-            ),
+            color: cs.primary,
           )
         : BoxDecoration(
             borderRadius: radius,
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-            border: Border.all(color: cs.outline.withValues(alpha: 0.16)),
+            color: cs.surfaceContainerHighest,
           );
+
+    final textColor = isUser ? Colors.white : cs.onSurface;
 
     return Column(
       crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -584,50 +506,31 @@ class _MessageBubble extends StatelessWidget {
           onLongPress: () async {
             await Clipboard.setData(ClipboardData(text: message.content));
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Message copié'), backgroundColor: cs.inversePrimary),
+              SnackBar(content: Text('Message copied'), backgroundColor: cs.primary),
             );
           },
-          child: ClipRRect(
-            borderRadius: radius,
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: isUser ? 0 : 8, sigmaY: isUser ? 0 : 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                constraints: const BoxConstraints(maxWidth: 520),
-                decoration: decoration,
-                child: Text(
-                  message.content,
-                  style: Theme.of(context).textTheme.bodyMedium?.withColor(fg),
-                ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            constraints: const BoxConstraints(maxWidth: 300),
+            decoration: decoration,
+            child: Text(
+              message.content,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: textColor,
+                height: 1.4,
               ),
             ),
           ),
         ),
+        // Minimal timestamp
         Padding(
-          padding: EdgeInsets.only(
-            left: isUser ? 0 : 6,
-            right: isUser ? 6 : 0,
-            top: 4,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                message.status == ChatDeliveryStatus.error
-                    ? Icons.error_outline
-                    : Icons.check_circle,
-                size: 14,
-                color: message.status == ChatDeliveryStatus.error
-                    ? cs.error
-                    : (isUser ? cs.onPrimary : cs.onSurfaceVariant),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                _formatTime(message.createdAt),
-                style: Theme.of(context).textTheme.labelSmall?.withColor(
-                    isUser ? cs.onPrimary.withValues(alpha: 0.9) : cs.onSurfaceVariant),
-              ),
-            ],
+          padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
+          child: Text(
+            _formatTime(message.createdAt),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+              fontSize: 11,
+            ),
           ),
         ),
       ],
@@ -734,6 +637,7 @@ class _DaySeparator extends StatelessWidget {
   }
 }
 
+/// Quick action buttons - Revolut-style professional suggestions
 class _QuickSuggestions extends StatelessWidget {
   final void Function(String) onSelect;
   const _QuickSuggestions({required this.onSelect});
@@ -741,23 +645,83 @@ class _QuickSuggestions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final suggestions = <String>[
-      'Analyse des points de pression du pied',
-      'Recommandation de semelles personnalisées',
-      'Résumé de la dernière session',
-      'Conseils post‑mesure et suivi',
-    ];
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: suggestions.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final text = suggestions[index];
-          return _HoloChip(text: text, onTap: () => onSelect(text));
-        },
+    final l10n = AppLocalizations.of(context);
+    
+    final suggestions = l10n.isFrench 
+        ? <Map<String, dynamic>>[
+            {'icon': Icons.analytics_outlined, 'text': 'Analyser'},
+            {'icon': Icons.medical_services_outlined, 'text': 'Recommandations'},
+            {'icon': Icons.summarize_outlined, 'text': 'Résumé'},
+            {'icon': Icons.tips_and_updates_outlined, 'text': 'Conseils'},
+          ]
+        : <Map<String, dynamic>>[
+            {'icon': Icons.analytics_outlined, 'text': 'Analyze'},
+            {'icon': Icons.medical_services_outlined, 'text': 'Recommendations'},
+            {'icon': Icons.summarize_outlined, 'text': 'Summary'},
+            {'icon': Icons.tips_and_updates_outlined, 'text': 'Tips'},
+          ];
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      child: Row(
+        children: suggestions.map((s) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _QuickActionButton(
+                icon: s['icon'] as IconData,
+                label: s['text'] as String,
+                onTap: () => onSelect(s['text'] as String),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+/// Individual quick action button - clean and minimal
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: cs.primary),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

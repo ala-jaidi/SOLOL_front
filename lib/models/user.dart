@@ -152,9 +152,9 @@ class Patient {
   String get formattedDateNaissance => DateFormat('dd/MM/yyyy').format(dateNaissance);
   String get fullName => '$prenom $nom';
   
-  String get sexeLabel {
-    if (sexe == 0) return 'Homme';
-    if (sexe == 1) return 'Femme';
-    return 'Autre';
+  String sexeLabel({bool isFrench = true}) {
+    if (sexe == 0) return isFrench ? 'Homme' : 'Male';
+    if (sexe == 1) return isFrench ? 'Femme' : 'Female';
+    return isFrench ? 'Autre' : 'Other';
   }
 }

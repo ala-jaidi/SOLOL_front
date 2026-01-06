@@ -63,21 +63,21 @@ class AppSideBar extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: [cs.primary, cs.tertiary.withValues(alpha: 0.9)]),
+                      // Logo SOLOL
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/icons/SOLOL.png',
+                          width: 44,
+                          height: 44,
                         ),
-                        child: Icon(Icons.analytics_outlined, color: cs.onPrimary),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(l10n.appName, style: Theme.of(context).textTheme.titleLarge?.semiBold),
+                            Text('SOLOL', style: Theme.of(context).textTheme.titleLarge?.semiBold),
                             Text(l10n.professionalSpace, style: Theme.of(context).textTheme.labelSmall?.withColor(cs.onSurfaceVariant)),
                           ],
                         ),

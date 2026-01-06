@@ -102,23 +102,25 @@ class _SignupPageState extends State<SignupPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(
-                        Icons.qr_code_scanner_rounded,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.primary,
+                      // Logo SOLOL
+                      Image.asset(
+                        'assets/icons/SOLOL.png',
+                        width: 80,
+                        height: 80,
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       Text(
-                        AppLocalizations.of(context).signup,
+                        'SOLOL',
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                          letterSpacing: 2,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        AppLocalizations.of(context).isFrench ? 'Rejoignez LiDAR Mesure' : 'Join LiDAR Mesure',
+                        AppLocalizations.of(context).isFrench ? 'Créez votre compte' : 'Create your account',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),

@@ -57,7 +57,7 @@ class _PatientsPageState extends State<PatientsPage> {
         });
       }
       if (_genderFilter != 'Tous') {
-        list = list.where((p) => p.sexeLabel.toLowerCase().startsWith(_genderFilter.toLowerCase()));
+        list = list.where((p) => p.sexeLabel().toLowerCase().startsWith(_genderFilter.toLowerCase()));
       }
       final tmp = list.toList();
       if (_sort == 'Nom') {
@@ -158,22 +158,52 @@ class _PatientsPageState extends State<PatientsPage> {
 
   Widget _buildHeader(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
     final count = _patients.length;
-    final subtitle = l10n.isFrench 
-        ? '$count patient${count > 1 ? 's' : ''} enregistre${count > 1 ? 's' : ''}'
-        : '$count patient${count > 1 ? 's' : ''} registered';
-    return GradientHeader(
-      title: l10n.myPatients.replaceAll('\n', ' '),
-      subtitle: subtitle,
-      showBack: true,
-      onBack: () => context.pop(),
-      trailing: Builder(
-        builder: (ctx) => IconButton(
-          icon: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
-          onPressed: () => Scaffold.of(ctx).openEndDrawer(),
-        ),
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
+      child: Row(
+        children: [
+          // Back button
+          IconButton(
+            onPressed: () => context.pop(),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
+          ),
+          const SizedBox(width: 4),
+          // Title & count
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.myPatients.replaceAll('\n', ' '),
+                  style: context.textStyles.titleLarge?.bold,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$count ${l10n.isFrench ? 'patients' : 'patients'}',
+                  style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          // Settings
+          Builder(
+            builder: (ctx) => Container(
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.tune_rounded, color: cs.onSurfaceVariant, size: 20),
+                onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+              ),
+            ),
+          ),
+        ],
       ),
-    ).animate().fadeIn(duration: 400.ms);
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   Widget _buildSearchBar(BuildContext context) {
@@ -388,7 +418,7 @@ class _PatientCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: cs.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
-                      child: Text(patient.sexeLabel, style: context.textStyles.labelSmall?.semiBold.withColor(cs.primary)),
+                      child: Text(patient.sexeLabel(isFrench: AppLocalizations.of(context).isFrench), style: context.textStyles.labelSmall?.semiBold.withColor(cs.primary)),
                     ),
                   ]),
                   SizedBox(height: AppSpacing.xs),

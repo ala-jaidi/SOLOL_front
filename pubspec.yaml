@@ -31,14 +31,24 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.3.8
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/icons/
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icons/dreamflow_icon.jpg
+  image_path: assets/icons/SOLOL.png
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: assets/icons/SOLOL.png
   remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#000000"
+  image: assets/icons/SOLOL.png
+  android: true
+  ios: true

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:printing/printing.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:lidarmesure/models/session.dart';
 import 'package:lidarmesure/models/user.dart';
@@ -7,7 +8,6 @@ import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/services/patient_service.dart';
 import 'package:lidarmesure/services/pdf_report_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lidarmesure/components/gradient_header.dart';
 import 'package:lidarmesure/l10n/app_localizations.dart';
 
 class SessionDetailPage extends StatefulWidget {
@@ -67,6 +67,98 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     }
   }
 
+  String _getStatusLabelFr(SessionStatus status) {
+    switch (status) {
+      case SessionStatus.pending:
+        return 'En attente';
+      case SessionStatus.completed:
+        return 'Terminée';
+      case SessionStatus.cancelled:
+        return 'Annulée';
+    }
+  }
+
+  Widget _buildHeader(BuildContext context, Session session) {
+    final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final statusColor = _getStatusColor(session.status, context);
+    final statusLabel = l10n.isFrench ? _getStatusLabelFr(session.status) : _getStatusLabelEn(session.status);
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
+      child: Row(
+        children: [
+          // Back button
+          IconButton(
+            onPressed: () => context.pop(),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
+          ),
+          const SizedBox(width: 4),
+          // Title & status
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.sessionDetails,
+                  style: context.textStyles.titleLarge?.bold,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: context.textStyles.labelSmall?.semiBold.withColor(statusColor),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // PDF Export button
+          Container(
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.picture_as_pdf_rounded, color: cs.primary, size: 20),
+              onPressed: () => _exportPdf(context),
+              tooltip: l10n.isFrench ? 'Exporter PDF' : 'Export PDF',
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms);
+  }
+
+  Future<void> _exportPdf(BuildContext context) async {
+    if (_session == null || _patient == null) return;
+    final l10n = AppLocalizations.of(context);
+    try {
+      final pdfBytes = await PdfReportService.generateSessionReport(
+        session: _session!,
+        patient: _patient!,
+        isFrench: l10n.isFrench,
+      );
+      await Printing.layoutPdf(onLayout: (_) async => pdfBytes);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.isFrench ? 'PDF généré' : 'PDF generated')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.isFrench ? 'Erreur export: $e' : 'Export error: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -84,7 +176,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
       body: SafeArea(
         child: Column(
           children: [
-            GradientHeader(title: AppLocalizations.of(context).sessionDetails, subtitle: AppLocalizations.of(context).measurements, showBack: true, onBack: () => context.pop()),
+            _buildHeader(context, s),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
