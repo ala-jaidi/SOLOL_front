@@ -38,10 +38,6 @@ class _ScanPageState extends State<ScanPage> {
   
   File? _topImage;
   File? _sideImage;
-  
-  // Futures pour suivre l'analyse en arrière-plan
-  Future<Map<String, dynamic>>? _topAnalysisFuture;
-  Future<Map<String, dynamic>>? _sideAnalysisFuture;
 
   Future<void> _selectPatient() async {
     final patients = await _patientService.getAllPatients();
@@ -72,22 +68,11 @@ class _ScanPageState extends State<ScanPage> {
         setState(() {
           if (isTop) {
             _topImage = imageFile;
-            // Lancer l'analyse TOP en arrière-plan
-            _topAnalysisFuture = _measurementService.analyzeTopView(image: _topImage!, footSide: _sideParam);
+            // Ne pas lancer l'analyse ici - on attend d'avoir les deux images
+            // pour utiliser l'endpoint hybride /measure
           } else {
             _sideImage = imageFile;
-            // Lancer l'analyse SIDE en SÉQUENTIEL (après TOP) pour la performance
-            // On attend que le TOP soit fini avant de lancer le SIDE
-            _sideAnalysisFuture = (() async {
-              if (_topAnalysisFuture != null) {
-                try {
-                  await _topAnalysisFuture;
-                } catch (e) {
-                  debugPrint('Erreur TOP ignorée pour lancer SIDE: $e');
-                }
-              }
-              return _measurementService.analyzeSideView(image: imageFile, footSide: _sideParam);
-            })();
+            // Ne pas lancer l'analyse ici - on attend d'avoir les deux images
           }
         });
       }
@@ -111,52 +96,29 @@ class _ScanPageState extends State<ScanPage> {
       );
       return;
     }
+    if (_sideImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.read(context).isFrench ? 'La photo de profil est requise' : 'Side view photo is required')),
+      );
+      return;
+    }
 
     setState(() {
       _isScanning = true;
     });
 
     try {
-      // Attendre la fin des analyses en cours
-      Map<String, dynamic> finalResult = {};
+      // Utiliser l'endpoint hybride /measure qui envoie les deux images en une seule requête
+      // Compatible avec le backend python_test_solol
+      debugPrint('🚀 Envoi des deux images vers /measure (foot_side: $_sideParam)');
       
-      // Récupérer résultat TOP
-      final topFuture = _topAnalysisFuture;
-      if (topFuture != null) {
-         final topRes = await topFuture;
-         debugPrint('🔍 Résultat TOP brut: $topRes');
-         finalResult.addAll(topRes);
-      } else {
-        // Fallback si jamais le future n'a pas été lancé (ne devrait pas arriver)
-        final topRes = await _measurementService.analyzeTopView(image: _topImage!, footSide: _sideParam);
-        debugPrint('🔍 Résultat TOP brut (fallback): $topRes');
-        finalResult.addAll(topRes);
-      }
+      final finalResult = await _measurementService.analyzeHybrid(
+        topView: _topImage!,
+        sideView: _sideImage!,
+        footSide: _sideParam,
+      );
 
-      // Récupérer résultat SIDE (si existe)
-      if (_sideImage != null) {
-        Map<String, dynamic> sideRes;
-        final sideFuture = _sideAnalysisFuture;
-        
-        if (sideFuture != null) {
-           sideRes = await sideFuture;
-        } else {
-           sideRes = await _measurementService.analyzeSideView(image: _sideImage!, footSide: _sideParam);
-        }
-        debugPrint('🔍 Résultat SIDE brut: $sideRes');
-
-        // PROTECTION : Gérer l'image de debug du SIDE pour ne pas écraser celle du TOP
-        if (sideRes.containsKey('debug_image_url')) {
-          finalResult['debug_image_url_side'] = sideRes['debug_image_url'];
-          // IMPORTANT : On retire la clé originale pour éviter d'écraser l'image du TOP dans finalResult
-          sideRes.remove('debug_image_url');
-        }
-
-        // Ajouter le reste des données du SIDE
-        finalResult.addAll(sideRes);
-      }
-
-      debugPrint('📦 Résultat final combiné: $finalResult');
+      debugPrint('📦 Résultat hybride: $finalResult');
 
       // Sauvegarde automatique de la session
       if (_selectedPatient != null) {
@@ -264,30 +226,53 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    SizedBox(height: AppSpacing.lg),
-                    _buildPatientSelector(context),
-                    SizedBox(height: AppSpacing.lg),
-                    _buildSideSelector(context),
-                    SizedBox(height: AppSpacing.xl),
-                    _buildScanArea(context),
-                    SizedBox(height: AppSpacing.xl),
-                    _buildInstructions(context),
-                    SizedBox(height: AppSpacing.xl),
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
                   ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildPatientSelector(context),
+                      const SizedBox(height: 20),
+                      _buildSideSelector(context),
+                      const SizedBox(height: 24),
+                      _buildScanArea(context),
+                      const SizedBox(height: 24),
+                      _buildInstructions(context),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _buildBottomActions(context),
-          ],
+              _buildBottomActions(context),
+            ],
+          ),
         ),
       ),
     );
@@ -295,141 +280,471 @@ class _ScanPageState extends State<ScanPage> {
 
   Widget _buildHeader(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return GradientHeader(
-      title: l10n.newScan,
-      subtitle: l10n.scanTitle,
-      showBack: true,
-      onBack: () => context.pop(),
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
+        children: [
+          // Back button
+          GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Title
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.newScan,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                  ),
+                ),
+                Text(
+                  l10n.scanTitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Scan icon badge
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cs.primary, cs.primary.withValues(alpha: 0.7)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.document_scanner_rounded, color: Colors.white, size: 20),
+          ),
+        ],
+      ),
     ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildPatientSelector(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    
     return Padding(
-      padding: AppSpacing.horizontalLg,
-      child: InkWell(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
         onTap: _isScanning ? null : _selectPatient,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding: AppSpacing.paddingMd,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.08)
+                : cs.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _selectedPatient != null 
+                  ? cs.primary.withValues(alpha: 0.5)
+                  : isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : cs.primary.withValues(alpha: 0.2),
+              width: _selectedPatient != null ? 2 : 1,
+            ),
           ),
           child: Row(
             children: [
+              // Avatar
               Container(
-                width: 56,
-                height: 56,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  gradient: LinearGradient(
+                    colors: _selectedPatient != null 
+                        ? [cs.primary, cs.primary.withValues(alpha: 0.7)]
+                        : [cs.onSurfaceVariant.withValues(alpha: 0.3), cs.onSurfaceVariant.withValues(alpha: 0.2)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(_selectedPatient == null ? Icons.person_add : Icons.person, color: Colors.white, size: 28),
+                child: Icon(
+                  _selectedPatient == null ? Icons.person_add_rounded : Icons.person_rounded, 
+                  color: Colors.white, 
+                  size: 26,
+                ),
               ),
-              SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 14),
+              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _selectedPatient == null ? (AppLocalizations.of(context).isFrench ? 'Selectionner un patient' : 'Select a patient') : _selectedPatient!.fullName,
-                      style: context.textStyles.titleMedium?.semiBold,
+                      _selectedPatient == null 
+                          ? (l10n.isFrench ? 'Sélectionner un patient' : 'Select a patient')
+                          : _selectedPatient!.fullName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (_selectedPatient != null) ...[
-                      SizedBox(height: AppSpacing.xs),
-                      Text('${_selectedPatient!.age} ans • Pointure ${_selectedPatient!.pointure}', 
-                        style: context.textStyles.bodySmall?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
-                    ],
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_selectedPatient!.age} ${l10n.isFrench ? 'ans' : 'years'} • ${l10n.isFrench ? 'Pointure' : 'Size'} ${_selectedPatient!.pointure}', 
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ] else
+                      Text(
+                        l10n.isFrench ? 'Appuyez pour choisir' : 'Tap to choose',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.primary),
+              // Arrow
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.chevron_right_rounded, color: cs.primary, size: 20),
+              ),
             ],
           ),
         ),
-      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
     );
   }
 
   Widget _buildScanArea(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    
     return Padding(
-      padding: AppSpacing.horizontalLg,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Étape 1 : Vue de dessus (Obligatoire)
-          _buildImageCard(
-            context, 
-            AppLocalizations.of(context).isFrench ? 'Vue de dessus (Obligatoire)' : 'Top view (Required)', 
-            _topImage, 
-            () => _takePhoto(true)
+          // Section title
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.camera_alt_rounded, color: cs.primary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                l10n.isFrench ? 'Captures requises' : 'Required captures',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Two views side by side
+          Row(
+            children: [
+              // Vue de dessus (Obligatoire)
+              Expanded(
+                child: _buildModernImageCard(
+                  context,
+                  l10n.isFrench ? 'Vue dessus' : 'Top view',
+                  l10n.isFrench ? 'Obligatoire' : 'Required',
+                  Icons.vertical_align_top_rounded,
+                  _topImage,
+                  () => _takePhoto(true),
+                  isRequired: true,
+                  isAnalyzing: false,
+                  analysisFuture: null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Vue de profil (Obligatoire)
+              Expanded(
+                child: _buildModernImageCard(
+                  context,
+                  l10n.isFrench ? 'Vue profil' : 'Side view',
+                  l10n.isFrench ? 'Obligatoire' : 'Required',
+                  Icons.swap_horiz_rounded,
+                  _sideImage,
+                  () => _takePhoto(false),
+                  isRequired: true,
+                  isAnalyzing: false,
+                  analysisFuture: null,
+                ),
+              ),
+            ],
           ),
           
-          // Indicateur de statut pour TOP
-          if (_topAnalysisFuture != null && _topImage != null)
-             FutureBuilder(
-               future: _topAnalysisFuture,
-               builder: (context, snapshot) {
-                 if (snapshot.connectionState == ConnectionState.waiting) {
-                   return Padding(
-                     padding: const EdgeInsets.only(top: 8.0),
-                     child: Row(
-                       mainAxisAlignment: MainAxisAlignment.center,
-                       children: [
-                         SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                         SizedBox(width: 8),
-                         Text(AppLocalizations.of(context).isFrench ? 'Analyse en cours...' : 'Analyzing...', style: TextStyle(color: Colors.orange, fontSize: 12)),
-                       ],
-                     ),
-                   );
-                 } else if (snapshot.hasError) {
-                   return Padding(
-                     padding: const EdgeInsets.only(top: 8.0),
-                     child: Text(AppLocalizations.of(context).isFrench ? 'Erreur analyse: ${snapshot.error}' : 'Analysis error: ${snapshot.error}', style: TextStyle(color: Colors.red, fontSize: 12)),
-                   );
-                 }
-                 return Padding(
-                   padding: const EdgeInsets.only(top: 8.0),
-                   child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 16),
-                        SizedBox(width: 8),
-                        Text(AppLocalizations.of(context).isFrench ? 'Analyse terminee' : 'Analysis complete', style: TextStyle(color: Colors.green, fontSize: 12)),
-                      ]
-                   ),
-                 );
-               }
-             ),
-
-          SizedBox(height: AppSpacing.md),
-          
-          // Étape 2 : Vue de profil (Apparaît seulement après Top)
-          if (_topImage != null) ...[
-             _buildImageCard(
-               context, 
-               AppLocalizations.of(context).isFrench ? 'Vue de profil (Optionnel)' : 'Side view (Optional)', 
-               _sideImage, 
-               () => _takePhoto(false)
-             ).animate().fadeIn().slideY(begin: 0.2),
-             
-              // Indicateur de statut pour SIDE
-              if (_sideAnalysisFuture != null && _sideImage != null)
-                FutureBuilder(
-                  future: _sideAnalysisFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(AppLocalizations.of(context).isFrench ? 'Analyse profil en cours...' : 'Side analysis in progress...', style: TextStyle(color: Colors.orange, fontSize: 12)),
-                      );
-                    }
-                    return SizedBox.shrink();
-                  }
+          // Status indicators
+          if (_topImage != null || _sideImage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : cs.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : cs.primary.withValues(alpha: 0.1),
+                  ),
                 ),
-          ],
+                child: Row(
+                  children: [
+                    _buildStatusIndicator(
+                      context,
+                      l10n.isFrench ? 'Dessus' : 'Top',
+                      _topImage != null,
+                      null,
+                    ),
+                    const SizedBox(width: 16),
+                    Container(width: 1, height: 24, color: cs.outline.withValues(alpha: 0.2)),
+                    const SizedBox(width: 16),
+                    _buildStatusIndicator(
+                      context,
+                      l10n.isFrench ? 'Profil' : 'Side',
+                      _sideImage != null,
+                      null,
+                    ),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(delay: 200.ms),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildModernImageCard(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    File? image,
+    VoidCallback onTap, {
+    bool isRequired = false,
+    bool isAnalyzing = false,
+    Future<Map<String, dynamic>>? analysisFuture,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: _isScanning ? null : onTap,
+      child: AspectRatio(
+        aspectRatio: 0.85,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.06)
+                : cs.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: image != null 
+                  ? cs.primary.withValues(alpha: 0.5)
+                  : isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : cs.outline.withValues(alpha: 0.2),
+              width: image != null ? 2 : 1,
+            ),
+            boxShadow: image != null ? [
+              BoxShadow(
+                color: cs.primary.withValues(alpha: 0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ] : null,
+          ),
+          child: image != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.file(image, fit: BoxFit.cover),
+                      // Overlay gradient
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.6),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Edit button
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.edit_rounded, color: cs.primary, size: 16),
+                        ),
+                      ),
+                      // Title at bottom
+                      Positioned(
+                        bottom: 8,
+                        left: 8,
+                        right: 8,
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.green, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: cs.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(icon, size: 28, color: cs.primary),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isRequired 
+                            ? cs.error.withValues(alpha: 0.1)
+                            : cs.onSurfaceVariant.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: isRequired ? cs.error : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Icon(Icons.add_a_photo_rounded, size: 20, color: cs.onSurfaceVariant),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildStatusIndicator(BuildContext context, String label, bool hasImage, Future<Map<String, dynamic>>? future) {
+    final cs = Theme.of(context).colorScheme;
+    
+    return Expanded(
+      child: Row(
+        children: [
+          if (!hasImage)
+            Icon(Icons.radio_button_unchecked, size: 18, color: cs.onSurfaceVariant)
+          else if (future != null)
+            FutureBuilder(
+              future: future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+                  );
+                }
+                return Icon(Icons.check_circle_rounded, size: 18, color: Colors.green);
+              },
+            )
+          else
+            Icon(Icons.check_circle_rounded, size: 18, color: Colors.green),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: hasImage ? cs.onSurface : cs.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

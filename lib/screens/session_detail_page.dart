@@ -81,19 +81,36 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
   Widget _buildHeader(BuildContext context, Session session) {
     final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = _getStatusColor(session.status, context);
     final statusLabel = l10n.isFrench ? _getStatusLabelFr(session.status) : _getStatusLabelEn(session.status);
     
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Row(
         children: [
-          // Back button
-          IconButton(
-            onPressed: () => context.pop(),
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
+          // Back button - consistent style
+          GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+            ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 12),
           // Title & status
           Expanded(
             child: Column(
@@ -101,7 +118,11 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
               children: [
                 Text(
                   l10n.sessionDetails,
-                  style: context.textStyles.titleLarge?.bold,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -112,22 +133,43 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                   ),
                   child: Text(
                     statusLabel,
-                    style: context.textStyles.labelSmall?.semiBold.withColor(statusColor),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          // PDF Export button
-          Container(
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
+          // PDF Export button - consistent style
+          GestureDetector(
+            onTap: () => _exportPdf(context),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.picture_as_pdf_rounded, color: cs.primary, size: 18),
             ),
-            child: IconButton(
-              icon: Icon(Icons.picture_as_pdf_rounded, color: cs.primary, size: 20),
-              onPressed: () => _exportPdf(context),
-              tooltip: l10n.isFrench ? 'Exporter PDF' : 'Export PDF',
+          ),
+          const SizedBox(width: 8),
+          // Delete button
+          GestureDetector(
+            onTap: () => _showDeleteSessionDialog(context),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: cs.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.delete_outline_rounded, color: cs.error, size: 18),
             ),
           ),
         ],
@@ -159,6 +201,87 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     }
   }
 
+  Future<void> _showDeleteSessionDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1A2A2F) : cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: cs.error.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.delete_forever_rounded, color: cs.error, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.isFrench ? 'Supprimer la session' : 'Delete Session',
+                style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          l10n.isFrench 
+              ? 'Êtes-vous sûr de vouloir supprimer cette session et toutes ses mesures ? Cette action est irréversible.'
+              : 'Are you sure you want to delete this session and all its measurements? This action cannot be undone.',
+          style: TextStyle(color: cs.onSurfaceVariant),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.isFrench ? 'Annuler' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: cs.error),
+            child: Text(l10n.isFrench ? 'Supprimer' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await _sessionService.deleteSession(_session!.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.isFrench ? 'Session supprimée' : 'Session deleted'),
+              backgroundColor: cs.primary,
+            ),
+          );
+          // Retourner à la page du patient avec refresh
+          if (_patient != null) {
+            context.go('/patient/${_patient!.id}');
+          } else if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/home');
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.isFrench ? 'Erreur: $e' : 'Error: $e'),
+              backgroundColor: cs.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -166,17 +289,44 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     }
 
     if (_session == null) {
-      return _NotFound(onBack: () => context.pop());
+      return _NotFound(onBack: () {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/home');
+        }
+      });
     }
 
     final s = _session!;
     final cs = Theme.of(context).colorScheme;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context, s),
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context, s),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
@@ -189,33 +339,74 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                       // Patient summary
                       if (_patient != null)
                         Container(
-                          padding: AppSpacing.paddingMd,
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: cs.surface,
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                            border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+                            color: isDark 
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : cs.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark 
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : cs.outline.withValues(alpha: 0.15),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 26,
-                                backgroundColor: cs.primary,
-                                child: Icon(Icons.person, color: cs.onPrimary),
+                              Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [cs.primary, cs.primary.withValues(alpha: 0.7)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(Icons.person_rounded, color: Colors.white, size: 26),
                               ),
-                              SizedBox(width: AppSpacing.md),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(_patient!.fullName, style: context.textStyles.titleMedium?.semiBold),
-                                    SizedBox(height: 2),
-                                    Text(AppLocalizations.of(context).isFrench ? 'Age ${_patient!.age} - Pointure ${_patient!.pointure}' : 'Age ${_patient!.age} - Size ${_patient!.pointure}', style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant)),
+                                    Text(
+                                      _patient!.fullName,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: cs.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      AppLocalizations.of(context).isFrench 
+                                          ? 'Age ${_patient!.age} - Pointure ${_patient!.pointure}' 
+                                          : 'Age ${_patient!.age} - Size ${_patient!.pointure}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              TextButton(
-                                onPressed: () => context.push('/patient/${_patient!.id}'),
-                                child: Text(AppLocalizations.of(context).isFrench ? 'Voir profil' : 'View profile'),
+                              GestureDetector(
+                                onTap: () => context.push('/patient/${_patient!.id}'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: cs.primary.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    AppLocalizations.of(context).isFrench ? 'Voir' : 'View',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -421,7 +612,8 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

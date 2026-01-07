@@ -212,160 +212,225 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Future<void> _showDeleteHistoryDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      endDrawer: const AppSideBar(),
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back, color: cs.onSurface),
-        ),
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2A2F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                // Subtle glow behind avatar
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [cs.primary.withValues(alpha: 0.35), cs.tertiary.withValues(alpha: 0.25)],
-                    ),
-                  ),
-                ).animate(onPlay: (c) => c.repeat()).scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), duration: 1200.ms).then().scale(begin: const Offset(1,1), end: const Offset(0.98,0.98), duration: 1200.ms),
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: cs.primaryContainer,
-                  child: Icon(Icons.smart_toy_rounded, color: cs.onPrimaryContainer, size: 18),
-                ),
-                // Online status dot
-                Positioned(
-                  right: -1,
-                  bottom: -1,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: cs.secondary.withValues(alpha: 0.20),
-                        ),
-                      ).animate(onPlay: (c) => c.repeat()).scale(begin: const Offset(0.9,0.9), end: const Offset(1.1,1.1), duration: 1400.ms).fadeIn(duration: 600.ms).then(delay: 300.ms).scale(begin: const Offset(1.1,1.1), end: const Offset(0.9,0.9), duration: 1400.ms),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: cs.secondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: cs.error.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.delete_forever_rounded, color: cs.error, size: 24),
             ),
-            const SizedBox(width: 10),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(AppLocalizations.of(context).chatTitle, style: context.textStyles.titleLarge?.semiBold),
-                Row(
-                  children: [
-                    Icon(Icons.auto_awesome_rounded, size: 14, color: cs.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Text(AppLocalizations.of(context).isFrench ? 'Conseils orthopediques' : 'Orthopedic advice',
-                        style: Theme.of(context).textTheme.labelSmall?.withColor(cs.onSurfaceVariant)),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.isFrench ? 'Effacer l\'historique' : 'Clear History',
+                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+              ),
             ),
           ],
         ),
+        content: Text(
+          l10n.isFrench 
+              ? 'Êtes-vous sûr de vouloir effacer tout l\'historique de conversation ? Cette action est irréversible.'
+              : 'Are you sure you want to clear all conversation history? This action cannot be undone.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.isFrench ? 'Annuler' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: cs.error),
+            child: Text(l10n.isFrench ? 'Effacer' : 'Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        // Delete from backend
+        if (_thread != null) {
+          await _chat.deleteThread(_thread!.id);
+        }
+        // Clear local state and create new thread
+        setState(() {
+          _messages.clear();
+          _thread = null;
+        });
+        await _initThread();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.isFrench ? 'Historique effacé' : 'History cleared'),
+              backgroundColor: cs.primary,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.isFrench ? 'Erreur: $e' : 'Error: $e'),
+              backgroundColor: cs.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Scaffold(
+      endDrawer: const AppSideBar(),
+      backgroundColor: isDark ? const Color(0xFF0A1A1F) : cs.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leadingWidth: 56,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+            ),
+          ),
+        ),
+        title: Text(
+          l10n.isFrench ? 'Assistant SOLOL' : 'SOLOL Assistant',
+          style: TextStyle(
+            color: cs.onSurface,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         centerTitle: true,
         actions: [
+          // Delete chat history button
+          if (_messages.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => _showDeleteHistoryDialog(context),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: cs.error.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.delete_outline_rounded, color: cs.error, size: 18),
+                ),
+              ),
+            ),
           Builder(
-            builder: (ctx) => IconButton(
-              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
-              icon: Icon(Icons.tune_rounded, color: cs.onSurface),
+            builder: (ctx) => Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: GestureDetector(
+                onTap: () => Scaffold.of(ctx).openEndDrawer(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isDark 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : cs.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.tune_rounded, color: cs.onSurface, size: 18),
+                ),
+              ),
             ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-              children: [
-                _TemplateBar(
-                  templates: _templates,
-                  selected: _selectedTemplate,
-                  loading: _loadingTemplates,
-                  sessionId: _sessionId,
-                  onRefresh: _loadTemplates,
-                  onNewThread: _newThread,
-                  onChanged: (v) => setState(() => _selectedTemplate = v),
-                ),
-                Builder(builder: (context) {
-                  final cs = Theme.of(context).colorScheme;
-                  return Container(height: 1, color: cs.outline.withValues(alpha: 0.08));
-                }),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? const [
+                    Color(0xFF0A1A1F),
+                    Color(0xFF0D2428),
+                    Color(0xFF0A1A1F),
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                    cs.surface,
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Show welcome screen if no messages
+              if (_messages.isEmpty && !_isTyping)
+                Expanded(
+                  child: _WelcomeScreen(
+                    onTopicSelect: (text) => _sendText(text),
+                  ),
+                )
+              else
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
-                    padding: AppSpacing.paddingMd,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: _messages.length + (_isTyping ? 1 : 0),
                     itemBuilder: (context, index) {
-                      // Day separator
-                      Widget buildBubble(int i) {
-                        if (_isTyping && i == _messages.length) {
-                          return const _TypingBubble()
-                              .animate()
-                              .fadeIn(duration: 250.ms)
-                              .slideY(begin: 0.2, end: 0);
-                        }
-                        final msg = _messages[i];
-                        return _MessageRow(message: msg)
+                      if (_isTyping && index == _messages.length) {
+                        return const _TypingBubble()
                             .animate()
-                            .fadeIn(duration: 220.ms)
-                            .slideY(begin: 0.08, end: 0);
+                            .fadeIn(duration: 250.ms)
+                            .slideY(begin: 0.2, end: 0);
                       }
-
-                      final isTypingItem = _isTyping && index == _messages.length;
-                      final isFirst = index == 0;
-                      final msgDate = isTypingItem
-                          ? DateTime.now()
-                          : _messages[index].createdAt;
-                      final prevDate = isFirst
-                          ? null
-                          : _messages[index - 1].createdAt;
-                      final showSeparator = isFirst || !_isSameDay(msgDate, prevDate!);
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (showSeparator) _DaySeparator(date: msgDate),
-                          buildBubble(index),
-                        ],
-                      );
+                      final msg = _messages[index];
+                      return _MessageRow(message: msg)
+                          .animate()
+                          .fadeIn(duration: 220.ms)
+                          .slideY(begin: 0.08, end: 0);
                     },
                   ),
                 ),
-                // Thin separator to replace removed top border of composer
-                Builder(builder: (context) {
-                  final cs = Theme.of(context).colorScheme;
-                  return Container(height: 1, color: cs.outline.withValues(alpha: 0.08));
-                }),
-                _QuickSuggestions(onSelect: (text) => _sendText(text)),
-                _Composer(onSend: _send, controller: _controller),
-              ],
-            ),
+              // Composer at bottom
+              _Composer(onSend: _send, controller: _controller),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -375,7 +440,193 @@ bool _isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-/// Clean composer - Revolut-inspired minimal input
+/// Welcome screen - simple greeting
+class _WelcomeScreen extends StatelessWidget {
+  final void Function(String) onTopicSelect;
+  const _WelcomeScreen({required this.onTopicSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Modern AI Logo - Neural network style
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Outer glow ring
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      cs.primary.withValues(alpha: 0.2),
+                      cs.primary.withValues(alpha: 0.05),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ).animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 2000.ms),
+              // Inner circle with gradient
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cs.primary.withValues(alpha: 0.9),
+                      cs.primary,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Neural network icon
+                    Icon(
+                      Icons.psychology_rounded,
+                      color: cs.onPrimary,
+                      size: 32,
+                    ),
+                    // Sparkle accent
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                        child: Icon(Icons.auto_awesome, size: 8, color: cs.primary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.7, 0.7), end: const Offset(1, 1)),
+          const SizedBox(height: 24),
+          // Combined greeting
+          Text(
+            l10n.isFrench 
+                ? 'Bonjour, comment puis-je vous aider ?'
+                : 'Hello, how can I help you?',
+            style: TextStyle(
+              color: cs.onSurface,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+        ],
+      ),
+    );
+  }
+}
+
+/// Topic card widget
+class _TopicCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  const _TopicCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.06)
+                : cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark 
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : cs.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: cs.primary, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: cs.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, 
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.5), size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Composer - AI Companion style
 class _Composer extends StatelessWidget {
   final VoidCallback onSend;
   final TextEditingController controller;
@@ -384,56 +635,94 @@ class _Composer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      color: cs.surface,
       child: Row(
         children: [
           // Input field
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(24),
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : cs.outline.withValues(alpha: 0.2),
+                ),
               ),
               child: TextField(
                 controller: controller,
                 minLines: 1,
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: TextStyle(color: cs.onSurface),
                 decoration: InputDecoration(
-                  hintText: l10n.isFrench ? 'Écrire un message...' : 'Write a message...',
-                  hintStyle: TextStyle(color: cs.onSurfaceVariant),
+                  hintText: l10n.isFrench ? 'Qu\'avez-vous en tête ?' : 'What is on your mind?',
+                  hintStyle: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.6)),
                   filled: false,
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  suffixIcon: GestureDetector(
+                    onTap: () {
+                      // TODO: Implement file picker
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: cs.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.attach_file_rounded,
+                        color: cs.primary,
+                        size: 18,
+                      ),
+                    ),
+                  ),
                 ),
                 onSubmitted: (_) => onSend(),
               ),
             ),
           ),
           const SizedBox(width: 12),
-          // Send button - clean accent circle
-          Material(
-            color: cs.primary,
-            borderRadius: BorderRadius.circular(24),
-            child: InkWell(
-              onTap: onSend,
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                width: 48,
-                height: 48,
-                alignment: Alignment.center,
-                child: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+          // Send button - premium animated
+          GestureDetector(
+            onTap: onSend,
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.primary.withValues(alpha: 0.9),
+                    cs.primary,
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
+              child: Icon(Icons.send_rounded, color: cs.onPrimary, size: 22),
             ),
-          ),
+          ).animate(onPlay: (c) => c.repeat(reverse: true))
+            .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1500.ms),
         ],
       ),
     );
@@ -446,101 +735,138 @@ class _MessageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final isUser = message.isUser;
-    final align = isUser ? MainAxisAlignment.end : MainAxisAlignment.start;
-    final avatar = CircleAvatar(
-      radius: 14,
-      backgroundColor: isUser ? cs.primaryContainer : cs.surfaceContainerHighest,
-      child: Icon(isUser ? Icons.person_rounded : Icons.smart_toy_rounded,
-          size: 18, color: isUser ? cs.onPrimaryContainer : cs.onSurfaceVariant),
-    );
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: align,
-        children: [
-          if (!isUser) avatar,
-          if (!isUser) const SizedBox(width: 8),
-          Flexible(child: _MessageBubble(message: message)),
-          if (isUser) const SizedBox(width: 8),
-          if (isUser) avatar,
-        ],
-      ),
-    );
+    if (isUser) {
+      // User message - right aligned with avatar
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // "You" label
+            Padding(
+              padding: const EdgeInsets.only(right: 44, bottom: 4),
+              child: Text(
+                'You',
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Flexible(child: _MessageBubble(message: message)),
+                const SizedBox(width: 8),
+                // User avatar
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: cs.primary.withValues(alpha: 0.2),
+                  child: Icon(Icons.person_rounded, size: 18, color: cs.primary),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    } else {
+      // AI message - left aligned with SOLOL label
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // AI label with modern logo
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _AILogo(size: 22),
+                  const SizedBox(width: 8),
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Color(0xFF4A9DFF), Color(0xFF9D4AFF)],
+                    ).createShader(bounds),
+                    child: Text(
+                      'SOLOL AI',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : cs.onSurface,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _MessageBubble(message: message),
+          ],
+        ),
+      );
+    }
   }
 }
 
-/// Premium message bubble - Revolut-inspired clean design
+/// Message bubble - AI Companion style
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   const _MessageBubble({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final isUser = message.isUser;
-    
-    // Clean, minimal bubble design
-    final radius = BorderRadius.circular(18);
-    
-    // User: solid accent color, AI: subtle elevated surface
-    final decoration = isUser
-        ? BoxDecoration(
-            borderRadius: radius,
-            color: cs.primary,
-          )
-        : BoxDecoration(
-            borderRadius: radius,
-            color: cs.surfaceContainerHighest,
-          );
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final textColor = isUser ? Colors.white : cs.onSurface;
-
-    return Column(
-      crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onLongPress: () async {
-            await Clipboard.setData(ClipboardData(text: message.content));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Message copied'), backgroundColor: cs.primary),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            constraints: const BoxConstraints(maxWidth: 300),
-            decoration: decoration,
-            child: Text(
-              message.content,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: textColor,
-                height: 1.4,
-              ),
-            ),
+    return GestureDetector(
+      onLongPress: () async {
+        await Clipboard.setData(ClipboardData(text: message.content));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Message copied'),
+            backgroundColor: cs.primary,
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: const BoxConstraints(maxWidth: 280),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          color: isUser
+              ? cs.primary
+              : isDark 
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : cs.surfaceContainerHighest,
+          border: isUser
+              ? null
+              : Border.all(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : cs.outline.withValues(alpha: 0.2),
+                ),
+        ),
+        child: Text(
+          message.content,
+          style: TextStyle(
+            color: isUser 
+                ? cs.onPrimary 
+                : isDark 
+                    ? Colors.white.withValues(alpha: 0.9)
+                    : cs.onSurface,
+            fontSize: 15,
+            height: 1.4,
           ),
         ),
-        // Minimal timestamp
-        Padding(
-          padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
-          child: Text(
-            _formatTime(message.createdAt),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
   }
 }
 
@@ -550,32 +876,64 @@ class _TypingBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            margin: EdgeInsets.symmetric(vertical: AppSpacing.xs),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // AI label with modern logo
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _AILogo(size: 22),
+                const SizedBox(width: 8),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFF4A9DFF), Color(0xFF9D4AFF)],
+                  ).createShader(bounds),
+                  child: Text(
+                    'SOLOL AI',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : cs.onSurface,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Typing indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(18),
+              color: isDark 
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : cs.surfaceContainerHighest,
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.outline.withValues(alpha: 0.2),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _Dot(color: cs.onSurfaceVariant).animate(onPlay: (c) => c.repeat()).fadeIn().moveX(begin: -2, end: 2, duration: 700.ms),
-                const SizedBox(width: 4),
-                _Dot(color: cs.onSurfaceVariant).animate(onPlay: (c) => c.repeat()).fadeIn(delay: 120.ms).moveX(begin: -2, end: 2, duration: 700.ms),
-                const SizedBox(width: 4),
-                _Dot(color: cs.onSurfaceVariant).animate(onPlay: (c) => c.repeat()).fadeIn(delay: 240.ms).moveX(begin: -2, end: 2, duration: 700.ms),
+                _Dot(color: cs.primary).animate(onPlay: (c) => c.repeat()).fadeIn().scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2), duration: 600.ms),
+                const SizedBox(width: 6),
+                _Dot(color: cs.primary).animate(onPlay: (c) => c.repeat()).fadeIn(delay: 150.ms).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2), duration: 600.ms),
+                const SizedBox(width: 6),
+                _Dot(color: cs.primary).animate(onPlay: (c) => c.repeat()).fadeIn(delay: 300.ms).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2), duration: 600.ms),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -593,6 +951,95 @@ class _Dot extends StatelessWidget {
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
+}
+
+/// Modern AI Logo with gradient and neural network inspired design
+class _AILogo extends StatelessWidget {
+  final double size;
+  const _AILogo({this.size = 24});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4A9DFF), Color(0xFF9D4AFF)],
+        ),
+        borderRadius: BorderRadius.circular(size * 0.3),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4A9DFF).withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: CustomPaint(
+        size: Size(size, size),
+        painter: _AILogoPainter(),
+      ),
+    );
+  }
+}
+
+class _AILogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final strokePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.06
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width * 0.15;
+
+    // Central node (brain/AI core)
+    canvas.drawCircle(center, radius, paint);
+
+    // Orbital rings representing neural connections
+    final orbitRadius = size.width * 0.32;
+    
+    // Draw connecting lines to outer nodes
+    final nodePositions = [
+      Offset(center.dx, center.dy - orbitRadius), // Top
+      Offset(center.dx + orbitRadius * 0.87, center.dy + orbitRadius * 0.5), // Bottom right
+      Offset(center.dx - orbitRadius * 0.87, center.dy + orbitRadius * 0.5), // Bottom left
+    ];
+
+    // Draw connection lines
+    for (final pos in nodePositions) {
+      canvas.drawLine(center, pos, strokePaint);
+    }
+
+    // Draw outer nodes
+    final smallRadius = size.width * 0.08;
+    for (final pos in nodePositions) {
+      canvas.drawCircle(pos, smallRadius, paint);
+    }
+
+    // Add sparkle effect (AI magic)
+    final sparklePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.9)
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(center.dx + size.width * 0.2, center.dy - size.height * 0.2),
+      size.width * 0.04,
+      sparklePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _DaySeparator extends StatelessWidget {

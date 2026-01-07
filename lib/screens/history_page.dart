@@ -75,67 +75,135 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       endDrawer: const AppSideBar(),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            _buildFilters(context),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredSessions.isEmpty
-                      ? _buildEmptyState(context)
-                      : RefreshIndicator(
-                          onRefresh: _loadSessions,
-                          child: ListView.separated(
-                            padding: AppSpacing.paddingLg,
-                            itemCount: _filteredSessions.length,
-                            separatorBuilder: (_, __) => SizedBox(height: AppSpacing.md),
-                            itemBuilder: (context, index) {
-                              final session = _filteredSessions[index];
-                              return _SessionHistoryCard(
-                                session: session,
-                                patientService: _patientService,
-                                onTap: () => context.push('/session/${session.id}'),
-                              ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.2);
-                            },
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context),
+              _buildFilters(context),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _filteredSessions.isEmpty
+                        ? _buildEmptyState(context)
+                        : RefreshIndicator(
+                            onRefresh: _loadSessions,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.all(20),
+                              itemCount: _filteredSessions.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final session = _filteredSessions[index];
+                                return _SessionHistoryCard(
+                                  session: session,
+                                  patientService: _patientService,
+                                  onTap: () => context.push('/session/${session.id}'),
+                                ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
+                              },
+                            ),
                           ),
-                        ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: AppSpacing.paddingLg,
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () => context.pop(),
+          // Back button
+          GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+            ),
           ),
-          SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: 16),
+          // Title
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(AppLocalizations.of(context).historyTitle, style: context.textStyles.headlineMedium?.bold),
-                Text(AppLocalizations.of(context).isFrench 
-                    ? '${_sessions.length} session${_sessions.length > 1 ? 's' : ''} enregistree${_sessions.length > 1 ? 's' : ''}'
-                    : '${_sessions.length} session${_sessions.length > 1 ? 's' : ''} recorded', 
-                  style: context.textStyles.bodyMedium?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+                Text(
+                  l10n.historyTitle,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                  ),
+                ),
+                Text(
+                  l10n.isFrench 
+                      ? '${_sessions.length} session${_sessions.length > 1 ? 's' : ''} enregistrée${_sessions.length > 1 ? 's' : ''}'
+                      : '${_sessions.length} session${_sessions.length > 1 ? 's' : ''} recorded',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
+          // Settings button
           Builder(
-            builder: (ctx) => IconButton(
-              icon: Icon(Icons.tune_rounded, color: Theme.of(context).colorScheme.onSurface),
-              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+            builder: (ctx) => GestureDetector(
+              onTap: () => Scaffold.of(ctx).openEndDrawer(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.tune_rounded, color: cs.onSurface, size: 18),
+              ),
             ),
           ),
         ],
@@ -145,45 +213,65 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget _buildFilters(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     final filters = l10n.isFrench 
         ? ['Tous', 'Termine', 'En cours', 'Annule']
         : ['All', 'Completed', 'Pending', 'Cancelled'];
-    return Container(
-      height: 50,
-      margin: EdgeInsets.only(bottom: AppSpacing.md),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: AppSpacing.horizontalLg,
-        itemCount: filters.length,
-        separatorBuilder: (_, __) => SizedBox(width: AppSpacing.sm),
-        itemBuilder: (context, index) {
+    final icons = [Icons.list_rounded, Icons.check_circle_outline, Icons.schedule_rounded, Icons.cancel_outlined];
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Row(
+        children: List.generate(filters.length, (index) {
           final filter = filters[index];
           final isSelected = _selectedFilter == filter;
-          return ChoiceChip(
-            label: Text(filter),
-            selected: isSelected,
-            onSelected: (selected) {
-              if (selected) setState(() => _selectedFilter = filter);
-            },
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            selectedColor: Theme.of(context).colorScheme.primary,
-            labelStyle: TextStyle(
-              color: isSelected 
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.onSurface,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              side: BorderSide(
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+          return Padding(
+            padding: EdgeInsets.only(right: index < filters.length - 1 ? 8 : 0),
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedFilter = filter),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: isSelected 
+                      ? cs.primary
+                      : isDark 
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : cs.surface,
+                  border: Border.all(
+                    color: isSelected 
+                        ? cs.primary
+                        : isDark 
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : cs.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icons[index],
+                      size: 16,
+                      color: isSelected ? Colors.white : cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      filter,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected ? Colors.white : cs.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           );
-        },
+        }),
       ),
     ).animate().fadeIn(delay: 200.ms);
   }
@@ -231,15 +319,23 @@ class _SessionHistoryCard extends StatelessWidget {
             ? session.footMetrics.map((m) => m.confidence).reduce((a, b) => a + b) / session.footMetrics.length
             : 0.0;
 
-        return InkWell(
+        final cs = Theme.of(context).colorScheme;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        
+        return GestureDetector(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
           child: Container(
-            padding: AppSpacing.paddingMd,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+              color: isDark 
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : cs.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.outline.withValues(alpha: 0.15),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,51 +343,68 @@ class _SessionHistoryCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).colorScheme.primary,
-                            Theme.of(context).colorScheme.secondary,
-                          ],
+                          colors: [cs.primary, cs.primary.withValues(alpha: 0.7)],
                         ),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(Icons.person, color: Colors.white, size: 28),
+                      child: const Icon(Icons.person_rounded, color: Colors.white, size: 26),
                     ),
-                    SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(patient?.fullName ?? 'Chargement...', style: context.textStyles.titleMedium?.semiBold, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          SizedBox(height: AppSpacing.xs),
-                          Text(DateFormat('dd MMM yyyy • HH:mm', 'fr_FR').format(session.createdAt), 
-                            style: context.textStyles.bodySmall?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)),
+                          Text(
+                            patient?.fullName ?? 'Chargement...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat('dd MMM yyyy • HH:mm', 'fr_FR').format(session.createdAt),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(session.status, context).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        color: _getStatusColor(session.status, context).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         session.statusLabel,
-                        style: context.textStyles.labelSmall?.semiBold.withColor(_getStatusColor(session.status, context)),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _getStatusColor(session.status, context),
+                        ),
                       ),
                     ),
                   ],
                 ),
                 if (hasMetrics) ...[
-                  SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: 12),
                   Container(
-                    padding: AppSpacing.paddingSm,
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      color: isDark 
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [

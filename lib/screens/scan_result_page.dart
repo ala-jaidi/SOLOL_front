@@ -92,7 +92,13 @@ class ScanResultPage extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
           ),
           SizedBox(width: AppSpacing.sm),
           Expanded(

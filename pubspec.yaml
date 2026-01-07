@@ -42,13 +42,13 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icons/SOLOL.png
-  adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: assets/icons/SOLOL.png
+  image_path: assets/icons/logo_solol.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/icons/logo_solol.png
   remove_alpha_ios: true
 
 flutter_native_splash:
-  color: "#000000"
-  image: assets/icons/SOLOL.png
+  color: "#FFFFFF"
+  image: assets/images/solol_B2B_platforme.png
   android: true
   ios: true

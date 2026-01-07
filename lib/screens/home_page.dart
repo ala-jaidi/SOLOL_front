@@ -48,18 +48,27 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       endDrawer: const AppSideBar(),
+      backgroundColor: cs.surface,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              cs.primary.withValues(alpha: 0.1),
-              cs.surface,
-            ],
-            stops: const [0.0, 0.3],
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  ],
+            stops: isDark ? const [0.0, 0.2, 0.5] : const [0.0, 0.3],
           ),
         ),
         child: SafeArea(
@@ -92,6 +101,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHeader(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final firstName = _currentUser?.fullName.split(' ').first ?? (l10n.isFrench ? 'Docteur' : 'Doctor');
     final hour = DateTime.now().hour;
     final greeting = hour < 12 
@@ -101,7 +111,7 @@ class _HomePageState extends State<HomePage> {
             : (l10n.isFrench ? 'Bonsoir' : 'Good evening');
 
     return Padding(
-      padding: AppSpacing.paddingLg,
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -109,7 +119,7 @@ class _HomePageState extends State<HomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Avatar with status indicator
+              // Avatar with gradient border
               Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
@@ -119,36 +129,43 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 child: CircleAvatar(
-                  radius: 22,
+                  radius: 24,
                   backgroundColor: cs.surface,
                   child: Text(
                     firstName.substring(0, 1).toUpperCase(),
-                    style: context.textStyles.titleMedium?.bold.withColor(cs.primary),
+                    style: context.textStyles.titleLarge?.bold.withColor(cs.primary),
                   ),
                 ),
               ),
-              // Settings button
+              // Settings button - consistent style
               Builder(
-                builder: (ctx) => Container(
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.tune_rounded, color: cs.onSurfaceVariant, size: 20),
-                    onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+                builder: (ctx) => GestureDetector(
+                  onTap: () => Scaffold.of(ctx).openEndDrawer(),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark 
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : cs.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.tune_rounded, color: cs.onSurface, size: 20),
                   ),
                 ),
               ),
             ],
           ).animate().fadeIn(duration: 300.ms),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 24),
           
           // Greeting - Large and bold
           Text(
             '$greeting,',
-            style: context.textStyles.bodyLarge?.withColor(cs.onSurfaceVariant),
+            style: TextStyle(
+              fontSize: 16,
+              color: cs.onSurfaceVariant,
+            ),
           ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
           
           const SizedBox(height: 4),
@@ -156,30 +173,39 @@ class _HomePageState extends State<HomePage> {
           // Name - Hero text
           Text(
             firstName,
-            style: context.textStyles.displaySmall?.bold.withColor(cs.onSurface),
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
+            ),
           ).animate().fadeIn(delay: 150.ms).slideX(begin: -0.1),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 12),
           
           // Subtitle with icon - Dynamic specialty
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.workspace_premium_outlined, size: 16, color: cs.primary),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : cs.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.workspace_premium_outlined, size: 16, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
                   _buildProfessionalLabel(l10n),
-                  style: context.textStyles.bodyMedium?.medium.withColor(cs.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ).animate().fadeIn(delay: 200.ms),
         ],
       ),

@@ -42,108 +42,164 @@ class _PodiatristProfilePageState extends State<PodiatristProfilePage> {
     super.dispose();
   }
 
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final profile = context.watch<PodiatristProfileState>();
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context).podiatristProfile),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: BackdropFilter(filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14), child: const SizedBox()),
-          ),
-          SingleChildScrollView(
-            padding: AppSpacing.paddingLg,
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Avatar
-                  Container(
-                    width: 92,
-                    height: 92,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [cs.primary, cs.tertiary.withValues(alpha: 0.9)]),
-                    ),
-                    child: Icon(Icons.person_rounded, color: cs.onPrimary, size: 42),
-                  ),
-                  SizedBox(height: AppSpacing.lg),
-
-                  _glassField(context, label: AppLocalizations.of(context).isFrench ? 'Nom complet' : 'Full name', controller: _name, icon: Icons.badge_rounded, validator: _required),
-                  SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: AppLocalizations.of(context).isFrench ? 'Cabinet / Clinique' : 'Clinic', controller: _clinic, icon: Icons.local_hospital_outlined),
-                  SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: AppLocalizations.of(context).email, controller: _email, icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
-                  SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: AppLocalizations.of(context).phone, controller: _phone, icon: Icons.phone_outlined, keyboardType: TextInputType.phone),
-                  SizedBox(height: AppSpacing.md),
-                  _glassField(context, label: 'Bio', controller: _bio, icon: Icons.info_outline, maxLines: 4),
-
-                  SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            _name.text = '';
-                            _clinic.text = '';
-                            _email.text = '';
-                            _phone.text = '';
-                            _bio.text = '';
-                          },
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: Text(AppLocalizations.of(context).isFrench ? 'Reinitialiser' : 'Reset'),
-                        ),
-                      ),
-                      SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            await context.read<PodiatristProfileState>().update(
-                                  fullName: _name.text.trim(),
-                                  clinic: _clinic.text.trim(),
-                                  email: _email.text.trim(),
-                                  phone: _phone.text.trim(),
-                                  bio: _bio.text.trim(),
-                                );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(AppLocalizations.of(context).isFrench ? 'Profil enregistre' : 'Profile saved'), backgroundColor: cs.primary),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.save_rounded),
-                          label: Text(AppLocalizations.of(context).isFrench ? 'Enregistrer' : 'Save'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: AppSpacing.xl),
-
-                  if (profile.fullName.isNotEmpty) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(AppLocalizations.of(context).isFrench ? 'Apercu' : 'Preview', style: context.textStyles.titleMedium?.semiBold),
-                    ),
-                    SizedBox(height: AppSpacing.md),
-                    _previewCard(context, profile),
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
                   ],
-                ],
-              ),
-            ),
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
           ),
-        ],
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _goBack(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark 
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : cs.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      l10n.podiatristProfile,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 92,
+                          height: 92,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(colors: [cs.primary, cs.tertiary.withValues(alpha: 0.9)]),
+                          ),
+                          child: Icon(Icons.person_rounded, color: cs.onPrimary, size: 42),
+                        ),
+                        const SizedBox(height: 24),
+
+                        _glassField(context, label: l10n.isFrench ? 'Nom complet' : 'Full name', controller: _name, icon: Icons.badge_rounded, validator: _required),
+                        const SizedBox(height: 16),
+                        _glassField(context, label: l10n.isFrench ? 'Cabinet / Clinique' : 'Clinic', controller: _clinic, icon: Icons.local_hospital_outlined),
+                        const SizedBox(height: 16),
+                        _glassField(context, label: l10n.email, controller: _email, icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                        const SizedBox(height: 16),
+                        _glassField(context, label: l10n.phone, controller: _phone, icon: Icons.phone_outlined, keyboardType: TextInputType.phone),
+                        const SizedBox(height: 16),
+                        _glassField(context, label: 'Bio', controller: _bio, icon: Icons.info_outline, maxLines: 4),
+
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  _name.text = '';
+                                  _clinic.text = '';
+                                  _email.text = '';
+                                  _phone.text = '';
+                                  _bio.text = '';
+                                },
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: Text(l10n.isFrench ? 'Reinitialiser' : 'Reset'),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: () async {
+                                  if (!_formKey.currentState!.validate()) return;
+                                  await context.read<PodiatristProfileState>().update(
+                                        fullName: _name.text.trim(),
+                                        clinic: _clinic.text.trim(),
+                                        email: _email.text.trim(),
+                                        phone: _phone.text.trim(),
+                                        bio: _bio.text.trim(),
+                                      );
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(l10n.isFrench ? 'Profil enregistre' : 'Profile saved'), backgroundColor: cs.primary),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.save_rounded),
+                                label: Text(l10n.isFrench ? 'Enregistrer' : 'Save'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+
+                        if (profile.fullName.isNotEmpty) ...[
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(l10n.isFrench ? 'Apercu' : 'Preview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: cs.onSurface)),
+                          ),
+                          const SizedBox(height: 16),
+                          _previewCard(context, profile),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

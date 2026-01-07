@@ -57,7 +57,7 @@ class _PatientsPageState extends State<PatientsPage> {
         });
       }
       if (_genderFilter != 'Tous') {
-        list = list.where((p) => p.sexeLabel().toLowerCase().startsWith(_genderFilter.toLowerCase()));
+        list = list.where((p) => p.sexeLabel().toLowerCase() == _genderFilter.toLowerCase());
       }
       final tmp = list.toList();
       if (_sort == 'Nom') {
@@ -71,13 +71,35 @@ class _PatientsPageState extends State<PatientsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       endDrawer: const AppSideBar(),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            _buildSearchBar(context),
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context),
+              _buildSearchBar(context),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -144,7 +166,8 @@ class _PatientsPageState extends State<PatientsPage> {
                           },
                         ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -159,18 +182,35 @@ class _PatientsPageState extends State<PatientsPage> {
   Widget _buildHeader(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final count = _patients.length;
     
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Row(
         children: [
-          // Back button
-          IconButton(
-            onPressed: () => context.pop(),
-            icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
+          // Back button - consistent style
+          GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+            ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 12),
           // Title & count
           Expanded(
             child: Column(
@@ -178,26 +218,37 @@ class _PatientsPageState extends State<PatientsPage> {
               children: [
                 Text(
                   l10n.myPatients.replaceAll('\n', ' '),
-                  style: context.textStyles.titleLarge?.bold,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '$count ${l10n.isFrench ? 'patients' : 'patients'}',
-                  style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          // Settings
+          // Settings - consistent style
           Builder(
-            builder: (ctx) => Container(
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                icon: Icon(Icons.tune_rounded, color: cs.onSurfaceVariant, size: 20),
-                onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+            builder: (ctx) => GestureDetector(
+              onTap: () => Scaffold.of(ctx).openEndDrawer(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.tune_rounded, color: cs.onSurface, size: 18),
               ),
             ),
           ),
@@ -208,59 +259,184 @@ class _PatientsPageState extends State<PatientsPage> {
 
   Widget _buildSearchBar(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = AppLocalizations.of(context);
+    
     return Padding(
-      padding: AppSpacing.horizontalLg,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(AppRadius.lg)),
-            child: Row(
-              children: [
-                Icon(Icons.search, color: cs.onSurfaceVariant, size: 24),
-                SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _filterPatients,
-                    decoration: InputDecoration(hintText: l10n.searchPatients, border: InputBorder.none, hintStyle: TextStyle(color: cs.onSurfaceVariant)),
-                  ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  IconButton(
-                    icon: Icon(Icons.clear, color: cs.onSurfaceVariant, size: 20),
-                    onPressed: () {
-                      _searchController.clear();
-                      _filterPatients('');
-                    },
-                  ),
-              ],
-            ),
-          ).animate().fadeIn(delay: 200.ms).slideY(begin: -0.2),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _chip(context, l10n.isFrench ? 'Tous' : 'All', _genderFilter == 'Tous', () { setState(() { _genderFilter = 'Tous'; }); _filterPatients(_searchController.text); }),
-                    const SizedBox(width: 8),
-                    _chip(context, l10n.male, _genderFilter == 'Homme', () { setState(() { _genderFilter = 'Homme'; }); _filterPatients(_searchController.text); }),
-                    const SizedBox(width: 8),
-                    _chip(context, l10n.female, _genderFilter == 'Femme', () { setState(() { _genderFilter = 'Femme'; }); _filterPatients(_searchController.text); }),
-                    const SizedBox(width: 8),
-                    _chip(context, l10n.other, _genderFilter == 'Autre', () { setState(() { _genderFilter = 'Autre'; }); _filterPatients(_searchController.text); }),
-                  ],
-                ),
+          // Clean unified search field
+          TextField(
+            controller: _searchController,
+            onChanged: _filterPatients,
+            style: TextStyle(color: cs.onSurface, fontSize: 15),
+            decoration: InputDecoration(
+              hintText: l10n.searchPatients,
+              hintStyle: TextStyle(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+                fontSize: 15,
+              ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 16, right: 12),
+                child: Icon(Icons.search_rounded, color: cs.primary, size: 22),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        _filterPatients('');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Icon(Icons.cancel_rounded, color: cs.onSurfaceVariant, size: 20),
+                      ),
+                    )
+                  : null,
+              suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              filled: true,
+              fillColor: isDark 
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : cs.surfaceContainerHighest,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: cs.primary, width: 1.5),
               ),
             ),
-            const SizedBox(width: 12),
-            _segSort(context),
-          ]),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: -0.1),
+          
+          const SizedBox(height: 16),
+          
+          // Gender filters only (removed sort toggle)
+          Row(
+            children: [
+              _modernChip(context, l10n.isFrench ? 'Tous' : 'All', Icons.people_outline, _genderFilter == 'Tous', () { setState(() { _genderFilter = 'Tous'; }); _filterPatients(_searchController.text); }),
+              const SizedBox(width: 10),
+              _modernChip(context, l10n.male, Icons.male_rounded, _genderFilter == 'Homme', () { setState(() { _genderFilter = 'Homme'; }); _filterPatients(_searchController.text); }),
+              const SizedBox(width: 10),
+              _modernChip(context, l10n.female, Icons.female_rounded, _genderFilter == 'Femme', () { setState(() { _genderFilter = 'Femme'; }); _filterPatients(_searchController.text); }),
+            ],
+          ).animate().fadeIn(delay: 300.ms),
+          
+          const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+  
+  Widget _modernChip(BuildContext context, String label, IconData icon, bool selected, VoidCallback onTap) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: selected 
+              ? cs.primary
+              : isDark 
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : cs.surface,
+          border: Border.all(
+            color: selected 
+                ? cs.primary
+                : isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.outline.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon, 
+              size: 16, 
+              color: selected ? Colors.white : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? Colors.white : cs.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _modernSortToggle(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark 
+            ? Colors.white.withValues(alpha: 0.08)
+            : cs.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark 
+              ? Colors.white.withValues(alpha: 0.1)
+              : cs.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _sortOption(context, Icons.schedule_rounded, l10n.isFrench ? 'Récent' : 'Recent', _sort == 'Récent', () { setState(() { _sort = 'Récent'; }); _filterPatients(_searchController.text); }),
+          _sortOption(context, Icons.sort_by_alpha_rounded, l10n.isFrench ? 'A-Z' : 'A-Z', _sort == 'Nom', () { setState(() { _sort = 'Nom'; }); _filterPatients(_searchController.text); }),
+        ],
+      ),
+    );
+  }
+  
+  Widget _sortOption(BuildContext context, IconData icon, String label, bool selected, VoidCallback onTap) {
+    final cs = Theme.of(context).colorScheme;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? Colors.white : cs.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: selected ? Colors.white : cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

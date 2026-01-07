@@ -9,7 +9,48 @@ class MeasurementService {
   // Ex: 'http://192.168.1.15:8000' ou 'https://api.lidarmesure.com'
   static const String _baseUrl = 'http://192.168.1.175:8000';
 
-  /// Analyse la vue de dessus (Largeur, Angle orteil)
+  /// Analyse hybride avec les deux vues (dessus + profil) en une seule requête
+  /// Compatible avec l'endpoint POST /measure du backend python_test_solol
+  Future<Map<String, dynamic>> analyzeHybrid({
+    required File topView,
+    required File sideView,
+    String footSide = 'right', // 'right' ou 'left'
+  }) async {
+    final uri = Uri.parse('$_baseUrl/measure');
+    final request = http.MultipartRequest('POST', uri);
+    
+    // Ajouter le paramètre foot_side
+    request.fields['foot_side'] = footSide;
+    
+    // Ajouter les deux images
+    final topFile = await http.MultipartFile.fromPath('top_view', topView.path);
+    final sideFile = await http.MultipartFile.fromPath('side_view', sideView.path);
+    request.files.add(topFile);
+    request.files.add(sideFile);
+
+    try {
+      debugPrint('🚀 Envoi mesure hybride vers $uri (foot_side: $footSide)');
+      final responseStream = await request.send().timeout(
+        const Duration(seconds: 180),
+        onTimeout: () => throw Exception('Timeout mesure hybride (180s)'),
+      );
+      
+      final response = await http.Response.fromStream(responseStream);
+      
+      if (response.statusCode == 200) {
+        debugPrint('✅ Mesure hybride analysée avec succès');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Erreur serveur: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur mesure hybride: $e');
+      rethrow;
+    }
+  }
+
+  /// Analyse la vue de dessus uniquement (Largeur, Angle orteil)
+  /// Fallback si le backend supporte les endpoints séparés
   Future<Map<String, dynamic>> analyzeTopView({
     required File image,
     String footSide = 'right',
@@ -42,7 +83,8 @@ class MeasurementService {
     }
   }
 
-  /// Analyse la vue de profil (Longueur)
+  /// Analyse la vue de profil uniquement (Longueur)
+  /// Fallback si le backend supporte les endpoints séparés
   Future<Map<String, dynamic>> analyzeSideView({
     required File image,
     String footSide = 'right',

@@ -131,7 +131,13 @@ class _AddSessionPageState extends State<AddSessionPage> {
       title: l10n.isFrench ? 'Nouvelle Session' : 'New Session',
       subtitle: l10n.sessionInfo,
       showBack: true,
-      onBack: () => context.pop(),
+      onBack: () {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/home');
+        }
+      },
     );
   }
 
@@ -233,7 +239,8 @@ class _AddSessionPageState extends State<AddSessionPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).isFrench ? 'Session creee' : 'Session created'), backgroundColor: Theme.of(context).colorScheme.primary),
       );
-      context.go('/session/$createdId');
+      // Retourner à la page du patient avec refresh
+      context.go('/patient/${_selectedPatient!.id}');
     } catch (e) {
       debugPrint('Add session error: $e');
       if (!mounted) return;

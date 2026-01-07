@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/models/user.dart';
-import 'package:lidarmesure/components/section_card.dart';
-import 'package:lidarmesure/components/gradient_header.dart';
 import 'package:lidarmesure/services/patient_service.dart';
 
 class AddPatientPage extends StatefulWidget {
@@ -26,10 +24,28 @@ class _AddPatientPageState extends State<AddPatientPage> {
   final _pointureCtrl = TextEditingController();
   final _tailleCtrl = TextEditingController();
   final _poidsCtrl = TextEditingController();
-  final _ageCtrl = TextEditingController();
   DateTime? _dateNaissance;
+  int? _calculatedAge;
   String _sexe = 'Homme';
   bool _submitting = false;
+
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month || 
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age;
+  }
 
   @override
   void dispose() {
@@ -40,94 +56,218 @@ class _AddPatientPageState extends State<AddPatientPage> {
     _pointureCtrl.dispose();
     _tailleCtrl.dispose();
     _poidsCtrl.dispose();
-    _ageCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: AppSpacing.paddingLg,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionCard(
-                        title: 'Informations personnelles',
-                        icon: Icons.person_outline,
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _goBack(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark 
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : cs.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _twoCols(
-                            context,
-                            _input(context, controller: _prenomCtrl, label: 'Prenom', icon: Icons.badge_outlined, validator: (v) => v == null || v.trim().isEmpty ? 'Prenom requis' : null),
-                            _input(context, controller: _nomCtrl, label: 'Nom', icon: Icons.badge_outlined, validator: (v) => v == null || v.trim().isEmpty ? 'Nom requis' : null),
+                          Text(
+                            'Nouveau Patient',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: cs.onSurface,
+                            ),
                           ),
-                          _input(context, controller: _telephoneCtrl, label: 'Telephone', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) => v == null || v.trim().isEmpty ? 'Telephone requis' : null),
-                          _twoCols(context, _datePickerField(context), _dropdownField(context)),
-                          _input(context, controller: _adresseCtrl, label: 'Adresse', icon: Icons.location_on_outlined, maxLines: 2, validator: (v) => v == null || v.trim().isEmpty ? 'Adresse requise' : null),
-                        ],
-                      ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.08),
-                      SectionCard(
-                        title: 'Mesures',
-                        icon: Icons.straighten,
-                        children: [
-                          _twoCols(
-                            context,
-                            _input(context, controller: _pointureCtrl, label: 'Pointure', icon: Icons.straighten, keyboardType: TextInputType.number, validator: _reqNum),
-                            _input(context, controller: _ageCtrl, label: 'Age', icon: Icons.cake_outlined, keyboardType: TextInputType.number, validator: _reqNum),
-                          ),
-                          _twoCols(
-                            context,
-                            _input(context, controller: _tailleCtrl, label: 'Taille (cm)', icon: Icons.height, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: _reqNum),
-                            _input(context, controller: _poidsCtrl, label: 'Poids (kg)', icon: Icons.monitor_weight_outlined, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: _reqNum),
-                          ),
-                        ],
-                      ).animate().fadeIn(duration: 250.ms, delay: 100.ms).slideY(begin: 0.08),
-                      SizedBox(height: AppSpacing.lg),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _submitting ? null : _submit,
-                              icon: _submitting
-                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Icon(Icons.check_circle_outline),
-                              label: const Text('Enregistrer le patient'),
+                          Text(
+                            'Creer un dossier patient',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: AppSpacing.lg),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionCard(
+                          context,
+                          title: 'Informations personnelles',
+                          icon: Icons.person_outline,
+                          children: [
+                            _twoCols(
+                              context,
+                              _input(context, controller: _prenomCtrl, label: 'Prenom', icon: Icons.badge_outlined, validator: (v) => v == null || v.trim().isEmpty ? 'Prenom requis' : null),
+                              _input(context, controller: _nomCtrl, label: 'Nom', icon: Icons.badge_outlined, validator: (v) => v == null || v.trim().isEmpty ? 'Nom requis' : null),
+                            ),
+                            _input(context, controller: _telephoneCtrl, label: 'Telephone', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, validator: (v) => v == null || v.trim().isEmpty ? 'Telephone requis' : null),
+                            _twoCols(context, _datePickerField(context), _dropdownField(context)),
+                            _input(context, controller: _adresseCtrl, label: 'Adresse', icon: Icons.location_on_outlined, maxLines: 2, validator: (v) => v == null || v.trim().isEmpty ? 'Adresse requise' : null),
+                          ],
+                        ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.08),
+                        const SizedBox(height: 16),
+                        _buildSectionCard(
+                          context,
+                          title: 'Mesures',
+                          icon: Icons.straighten,
+                          children: [
+                            _twoCols(
+                              context,
+                              _input(context, controller: _pointureCtrl, label: 'Pointure', icon: Icons.straighten, keyboardType: TextInputType.number, validator: _reqNum),
+                              _ageDisplayField(context),
+                            ),
+                            _twoCols(
+                              context,
+                              _input(context, controller: _tailleCtrl, label: 'Taille (cm)', icon: Icons.height, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: _reqNum),
+                              _input(context, controller: _poidsCtrl, label: 'Poids (kg)', icon: Icons.monitor_weight_outlined, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: _reqNum),
+                            ),
+                          ],
+                        ).animate().fadeIn(duration: 250.ms, delay: 100.ms).slideY(begin: 0.08),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: _submitting ? null : _submit,
+                                icon: _submitting
+                                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : const Icon(Icons.check_circle_outline),
+                                label: const Text('Enregistrer le patient'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return GradientHeader(
-      title: 'Nouveau Patient',
-      subtitle: 'Creer un dossier patient',
-      showBack: true,
-      onBack: () => context.pop(),
+  Widget _buildSectionCard(BuildContext context, {required String title, required IconData icon, required List<Widget> children}) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark 
+            ? Colors.white.withValues(alpha: 0.06)
+            : cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark 
+              ? Colors.white.withValues(alpha: 0.1)
+              : cs.outline.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: cs.primary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String title) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(title, style: context.textStyles.titleLarge?.semiBold),
-      );
+  Widget _ageDisplayField(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Age (auto)',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          filled: true,
+          prefixIcon: Icon(Icons.cake_outlined, color: cs.primary),
+        ),
+        child: Text(
+          _calculatedAge != null ? '$_calculatedAge ans' : 'Selectionnez la date',
+          style: TextStyle(
+            color: _calculatedAge != null ? cs.onSurface : cs.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
 
   String? _reqNum(String? v) {
     if (v == null || v.trim().isEmpty) return 'Champ requis';
@@ -181,6 +321,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
   }
 
   Widget _datePickerField(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: InkWell(
@@ -191,13 +332,13 @@ class _AddPatientPageState extends State<AddPatientPage> {
             labelText: 'Date de naissance',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
             filled: true,
-            prefixIcon: Icon(Icons.event, color: Theme.of(context).colorScheme.primary),
+            prefixIcon: Icon(Icons.event, color: cs.primary),
           ),
           child: Text(
             _dateNaissance == null
                 ? 'Choisir une date'
                 : '${_dateNaissance!.day.toString().padLeft(2, '0')}/${_dateNaissance!.month.toString().padLeft(2, '0')}/${_dateNaissance!.year}',
-            style: context.textStyles.bodyMedium,
+            style: TextStyle(color: cs.onSurface),
           ),
         ),
       ),
@@ -223,12 +364,21 @@ class _AddPatientPageState extends State<AddPatientPage> {
       lastDate: now,
       initialDate: _dateNaissance ?? initial,
     );
-    if (picked != null) setState(() => _dateNaissance = picked);
+    if (picked != null) {
+      setState(() {
+        _dateNaissance = picked;
+        _calculatedAge = _calculateAge(picked);
+      });
+    }
   }
 
   Future<void> _submit() async {
     if (_dateNaissance == null) {
       _showSnack('Veuillez selectionner la date de naissance', isError: true);
+      return;
+    }
+    if (_calculatedAge == null) {
+      _showSnack('Age non calcule', isError: true);
       return;
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
@@ -247,7 +397,7 @@ class _AddPatientPageState extends State<AddPatientPage> {
         taille: double.parse(_tailleCtrl.text.replaceAll(',', '.')),
         poids: double.parse(_poidsCtrl.text.replaceAll(',', '.')),
         telephone: _telephoneCtrl.text.trim(),
-        age: int.parse(_ageCtrl.text.trim()),
+        age: _calculatedAge!,
         adresse: _adresseCtrl.text.trim(),
         createdAt: createdAt,
         updatedAt: createdAt,
@@ -256,7 +406,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
       final created = await _service.addPatient(patient);
       if (!mounted) return;
       _showSnack('Patient cree avec succes');
-      context.go('/patient/${created.id}');
+      // Retourner à la liste des patients avec refresh
+      context.go('/patients');
     } catch (e) {
       debugPrint('Add patient error: $e');
       if (!mounted) return;

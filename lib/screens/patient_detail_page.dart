@@ -43,6 +43,80 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     setState(() => _isLoading = false);
   }
 
+  Future<bool> _confirmDeleteSession(BuildContext context, Session session) async {
+    final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    
+    return await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: cs.error.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.delete_forever_rounded, color: cs.error, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.isFrench ? 'Supprimer la session' : 'Delete Session',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          l10n.isFrench 
+              ? 'Êtes-vous sûr de vouloir supprimer cette session ?'
+              : 'Are you sure you want to delete this session?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.isFrench ? 'Annuler' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: cs.error),
+            child: Text(l10n.isFrench ? 'Supprimer' : 'Delete'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<void> _deleteSession(Session session) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await _sessionService.deleteSession(session.id);
+      setState(() {
+        _sessions.removeWhere((s) => s.id == session.id);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.isFrench ? 'Session supprimée' : 'Session deleted'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.isFrench ? 'Erreur: $e' : 'Error: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -62,7 +136,13 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               Text(AppLocalizations.of(context).noPatientFound, style: context.textStyles.titleLarge?.semiBold),
               SizedBox(height: AppSpacing.md),
               FilledButton.icon(
-                onPressed: () => context.pop(),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/home');
+                  }
+                },
                 icon: const Icon(Icons.arrow_back),
                 label: Text(AppLocalizations.of(context).back),
               ),
@@ -72,25 +152,48 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
       );
     }
 
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildPatientInfo(context),
-                    SizedBox(height: AppSpacing.xl),
-                    _buildSessionsSection(context),
-                    SizedBox(height: AppSpacing.xl),
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
                   ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPatientInfo(context),
+                      SizedBox(height: AppSpacing.xl),
+                      _buildSessionsSection(context),
+                      SizedBox(height: AppSpacing.xl),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -107,13 +210,32 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
-      padding: AppSpacing.paddingLg,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () => context.pop(),
+          GestureDetector(
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : cs.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+            ),
           ),
           SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -121,7 +243,11 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           ),
           IconButton(
             icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
-            onPressed: () {},
+            onPressed: () => context.push('/patient/${widget.patientId}/edit'),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+            onPressed: () => _showDeletePatientDialog(context),
           ),
         ],
       ),
@@ -175,13 +301,23 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           Text('${_patient!.age} ${AppLocalizations.of(context).isFrench ? 'ans' : 'yrs'} • ${_patient!.sexeLabel(isFrench: AppLocalizations.of(context).isFrench)}', 
             style: context.textStyles.bodyLarge?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)).animate().fadeIn(delay: 400.ms),
           SizedBox(height: AppSpacing.lg),
-          Container(
-            padding: AppSpacing.paddingMd,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
-            ),
+          Builder(
+            builder: (context) {
+              final cs = Theme.of(context).colorScheme;
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Container(
+                padding: AppSpacing.paddingMd,
+                decoration: BoxDecoration(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : cs.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: isDark 
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : cs.outline.withValues(alpha: 0.15),
+                  ),
+                ),
             child: Column(
               children: [
                 // _InfoRow(icon: Icons.email_outlined, label: 'Email', value: _patient!.email),
@@ -199,6 +335,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
                 ),
               ],
             ),
+              );
+            },
           ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
         ],
       ),
@@ -249,10 +387,12 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
               separatorBuilder: (_, __) => SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final session = _sessions[index];
-                return _SessionCard(
+                return _SwipeableSessionCard(
                   session: session,
                   onTap: () => context.push('/session/${session.id}'),
-                ).animate().fadeIn(delay: (100 * index).ms).slideX(begin: 0.2);
+                  onDelete: () => _deleteSession(session),
+                  confirmDelete: () => _confirmDeleteSession(context, session),
+                ).animate().fadeIn(delay: (100 * index).ms);
               },
             ),
         ],
@@ -391,6 +531,79 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
     }
   }
 
+  Future<void> _showDeletePatientDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1A2A2F) : cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: cs.error.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.delete_forever_rounded, color: cs.error, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.isFrench ? 'Supprimer le patient' : 'Delete Patient',
+                style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          l10n.isFrench 
+              ? 'Êtes-vous sûr de vouloir supprimer ce patient et toutes ses données ? Cette action est irréversible.'
+              : 'Are you sure you want to delete this patient and all their data? This action cannot be undone.',
+          style: TextStyle(color: cs.onSurfaceVariant),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.isFrench ? 'Annuler' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: cs.error),
+            child: Text(l10n.isFrench ? 'Supprimer' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await _patientService.deletePatient(_patient!.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.isFrench ? 'Patient supprimé' : 'Patient deleted'),
+              backgroundColor: cs.primary,
+            ),
+          );
+          context.go('/patients');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.isFrench ? 'Erreur: $e' : 'Error: $e'),
+              backgroundColor: cs.error,
+            ),
+          );
+        }
+      }
+    }
+  }
 }
 
 class _InfoRow extends StatelessWidget {
@@ -481,5 +694,129 @@ class _SessionCard extends StatelessWidget {
       case SessionStatus.cancelled:
         return Theme.of(context).colorScheme.error;
     }
+  }
+}
+
+class _SwipeableSessionCard extends StatefulWidget {
+  final Session session;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final Future<bool> Function() confirmDelete;
+
+  const _SwipeableSessionCard({
+    required this.session,
+    required this.onTap,
+    required this.onDelete,
+    required this.confirmDelete,
+  });
+
+  @override
+  State<_SwipeableSessionCard> createState() => _SwipeableSessionCardState();
+}
+
+class _SwipeableSessionCardState extends State<_SwipeableSessionCard> {
+  double _dragExtent = 0;
+  bool _isDeleting = false;
+  static const double _deleteThreshold = 80;
+
+  Color _getStatusColor(SessionStatus status, BuildContext context) {
+    switch (status) {
+      case SessionStatus.pending:
+        return Theme.of(context).colorScheme.tertiary;
+      case SessionStatus.completed:
+        return Theme.of(context).colorScheme.secondary;
+      case SessionStatus.cancelled:
+        return Theme.of(context).colorScheme.error;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    
+    return GestureDetector(
+      onHorizontalDragUpdate: (details) {
+        setState(() {
+          _dragExtent = (_dragExtent + details.delta.dx).clamp(-120.0, 0.0);
+        });
+      },
+      onHorizontalDragEnd: (details) async {
+        if (_dragExtent.abs() > _deleteThreshold) {
+          final confirmed = await widget.confirmDelete();
+          if (confirmed) {
+            setState(() => _isDeleting = true);
+            widget.onDelete();
+          } else {
+            setState(() => _dragExtent = 0);
+          }
+        } else {
+          setState(() => _dragExtent = 0);
+        }
+      },
+      onTap: _dragExtent == 0 ? widget.onTap : () => setState(() => _dragExtent = 0),
+      child: Stack(
+        children: [
+          // Delete background
+          Positioned.fill(
+            child: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: cs.error,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                  const SizedBox(height: 2),
+                  Text(
+                    l10n.isFrench ? 'Supprimer' : 'Delete',
+                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Card content
+          AnimatedContainer(
+            duration: _dragExtent == 0 ? const Duration(milliseconds: 200) : Duration.zero,
+            transform: Matrix4.translationValues(_dragExtent, 0, 0),
+            child: Container(
+              padding: AppSpacing.paddingSm,
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(widget.session.status, context).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(Icons.analytics_outlined, color: _getStatusColor(widget.session.status, context), size: 20),
+                  ),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.session.formattedDate, style: context.textStyles.bodyMedium?.medium),
+                        Text(widget.session.statusLabel, style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

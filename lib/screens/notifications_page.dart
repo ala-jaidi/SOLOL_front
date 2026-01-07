@@ -9,112 +9,177 @@ import 'package:lidarmesure/l10n/app_localizations.dart';
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
 
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final nc = context.watch<NotificationCenter>();
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context).notificationsTitle),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+      backgroundColor: cs.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [
+                    const Color(0xFF0A1A1F),
+                    const Color(0xFF0D2428),
+                    cs.surface,
+                  ]
+                : [
+                    cs.primary.withValues(alpha: 0.08),
+                    cs.surface,
+                  ],
+            stops: isDark ? const [0.0, 0.15, 0.4] : const [0.0, 0.25],
+          ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.done_all_rounded, color: cs.primary),
-            tooltip: AppLocalizations.of(context).markAllRead,
-            onPressed: () => context.read<NotificationCenter>().markAllRead(),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: const SizedBox(),
-            ),
-          ),
-          Padding(
-            padding: AppSpacing.paddingLg,
-            child: nc.items.isEmpty
-                ? _emptyState(context)
-                : ListView.separated(
-                    itemCount: nc.items.length,
-                    separatorBuilder: (_, __) => SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final n = nc.items[index];
-                      return Dismissible(
-                        key: ValueKey(n.id),
-                        background: Container(
-                          decoration: BoxDecoration(
-                            color: cs.error,
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          alignment: Alignment.centerLeft,
-                          child: Icon(Icons.delete_outline, color: cs.onError),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _goBack(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark 
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : cs.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        secondaryBackground: Container(
-                          decoration: BoxDecoration(
-                            color: cs.error,
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          alignment: Alignment.centerRight,
-                          child: Icon(Icons.delete_outline, color: cs.onError),
+                        child: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        l10n.notificationsTitle,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface,
                         ),
-                        onDismissed: (_) {
-                          // Simplest: mark as read and keep in list; or remove entirely.
-                          context.read<NotificationCenter>().markRead(n.id, true);
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: cs.surface,
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                            border: Border.all(color: cs.outline.withValues(alpha: 0.12)),
-                          ),
-                          padding: AppSpacing.paddingMd,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(n.read ? Icons.notifications_none_rounded : Icons.notifications_active_rounded, color: n.read ? cs.onSurfaceVariant : cs.primary),
-                              SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.read<NotificationCenter>().markAllRead(),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark 
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : cs.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.done_all_rounded, color: cs.primary, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              Expanded(
+                child: nc.items.isEmpty
+                    ? _emptyState(context)
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: nc.items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final n = nc.items[index];
+                          return Dismissible(
+                            key: ValueKey(n.id),
+                            background: Container(
+                              decoration: BoxDecoration(
+                                color: cs.error,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              alignment: Alignment.centerLeft,
+                              child: Icon(Icons.delete_outline, color: cs.onError),
+                            ),
+                            secondaryBackground: Container(
+                              decoration: BoxDecoration(
+                                color: cs.error,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              alignment: Alignment.centerRight,
+                              child: Icon(Icons.delete_outline, color: cs.onError),
+                            ),
+                            onDismissed: (_) {
+                              context.read<NotificationCenter>().markRead(n.id, true);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isDark 
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : cs.surface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark 
+                                      ? Colors.white.withValues(alpha: 0.1)
+                                      : cs.outline.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(n.read ? Icons.notifications_none_rounded : Icons.notifications_active_rounded, color: n.read ? cs.onSurfaceVariant : cs.primary),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(child: Text(n.title, style: context.textStyles.titleSmall?.semiBold)),
-                                        Text(_formatTime(n.createdAt), style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant)),
+                                        Row(
+                                          children: [
+                                            Expanded(child: Text(n.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface))),
+                                            Text(_formatTime(n.createdAt), style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(n.body, style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            TextButton.icon(
+                                              onPressed: () => context.read<NotificationCenter>().markRead(n.id, !n.read),
+                                              icon: Icon(n.read ? Icons.mark_email_unread : Icons.mark_email_read, size: 18),
+                                              label: Text(n.read ? (l10n.isFrench ? 'Marquer non lu' : 'Mark unread') : (l10n.isFrench ? 'Marquer comme lu' : 'Mark as read')),
+                                            ),
+                                          ],
+                                        )
                                       ],
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(n.body, style: context.textStyles.bodyMedium),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        TextButton.icon(
-                                          onPressed: () => context.read<NotificationCenter>().markRead(n.id, !n.read),
-                                          icon: Icon(n.read ? Icons.mark_email_unread : Icons.mark_email_read, size: 18),
-                                          label: Text(n.read ? (AppLocalizations.of(context).isFrench ? 'Marquer non lu' : 'Mark unread') : (AppLocalizations.of(context).isFrench ? 'Marquer comme lu' : 'Mark as read')),
-                                        ),
-                                      ],
-                                    )
-                                  ],
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                                  )
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

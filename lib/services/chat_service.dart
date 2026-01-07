@@ -170,6 +170,59 @@ class ChatService {
       }
     }
 
+    /// Delete a specific chat thread and all its messages.
+    Future<void> deleteThread(String threadId) async {
+      try {
+        // Messages are deleted via CASCADE in DB, but we can also delete explicitly
+        await SupabaseConfig.client.from('chat_messages').delete().eq('thread_id', threadId);
+        await SupabaseConfig.client.from('chat_threads').delete().eq('id', threadId);
+      } catch (e, st) {
+        debugPrint('deleteThread error: $e\n$st');
+        rethrow;
+      }
+    }
+
+    /// Delete all chat threads and messages for the current user.
+    Future<void> deleteAllThreads() async {
+      final userId = SupabaseConfig.auth.currentUser?.id;
+      if (userId == null) throw Exception('Utilisateur non authentifié');
+      try {
+        // Get all thread IDs for this user
+        final threads = await SupabaseConfig.client
+            .from('chat_threads')
+            .select('id')
+            .eq('user_id', userId);
+        
+        // Delete messages for each thread
+        for (final thread in (threads as List)) {
+          await SupabaseConfig.client.from('chat_messages').delete().eq('thread_id', thread['id']);
+        }
+        
+        // Delete all threads
+        await SupabaseConfig.client.from('chat_threads').delete().eq('user_id', userId);
+      } catch (e, st) {
+        debugPrint('deleteAllThreads error: $e\n$st');
+        rethrow;
+      }
+    }
+
+    /// Get all threads for the current user.
+    Future<List<ChatThread>> getAllThreads() async {
+      final userId = SupabaseConfig.auth.currentUser?.id;
+      if (userId == null) throw Exception('Utilisateur non authentifié');
+      try {
+        final rows = await SupabaseConfig.client
+            .from('chat_threads')
+            .select()
+            .eq('user_id', userId)
+            .order('last_message_at', ascending: false);
+        return (rows as List).map((e) => ChatThread.fromMap(e as Map<String, dynamic>)).toList();
+      } catch (e, st) {
+        debugPrint('getAllThreads error: $e\n$st');
+        rethrow;
+      }
+    }
+
   /// Sends a message and returns the assistant's reply.
   Future<String> sendMessage({
     required String message,

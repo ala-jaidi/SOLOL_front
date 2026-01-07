@@ -67,7 +67,7 @@ class AppSideBar extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.asset(
-                          'assets/icons/SOLOL.png',
+                          'assets/icons/logo_solol.png',
                           width: 44,
                           height: 44,
                         ),

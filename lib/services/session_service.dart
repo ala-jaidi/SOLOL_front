@@ -68,14 +68,31 @@ class SessionService {
 
   Future<String> addSession(Session session) async {
     try {
+      // Map status to database expected values
+      // Database constraint expects: 'En cours', 'Terminé', 'Annulé'
+      String statusValue;
+      switch (session.status) {
+        case SessionStatus.pending:
+          statusValue = 'En cours';
+          break;
+        case SessionStatus.completed:
+          statusValue = 'Terminé';
+          break;
+        case SessionStatus.cancelled:
+          statusValue = 'Annulé';
+          break;
+      }
+      
       final sessionData = {
         'id': const Uuid().v4(),
         'patient_id': session.patientId,
-        'status': session.status.name,
+        'status': statusValue,
         'valid': session.valid,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };
+      
+      debugPrint('📝 Adding session with data: $sessionData');
       
       final result = await SupabaseService.insert('sessions', sessionData);
       final sessionId = result.first['id'] as String;
@@ -101,10 +118,25 @@ class SessionService {
 
   Future<void> updateSession(Session session) async {
     try {
+      // Map status to database expected values
+      // Database constraint expects: 'En cours', 'Terminé', 'Annulé'
+      String statusValue;
+      switch (session.status) {
+        case SessionStatus.pending:
+          statusValue = 'En cours';
+          break;
+        case SessionStatus.completed:
+          statusValue = 'Terminé';
+          break;
+        case SessionStatus.cancelled:
+          statusValue = 'Annulé';
+          break;
+      }
+      
       await SupabaseService.update(
         'sessions',
         {
-          'status': session.status.name,
+          'status': statusValue,
           'valid': session.valid,
           'updated_at': DateTime.now().toIso8601String(),
         },
@@ -192,14 +224,25 @@ class SessionService {
     final updatedAtStr = sessionData['updated_at'] as String?;
     final patientId = sessionData['patient_id'] as String? ?? '';
 
+    // Map database status back to enum (handle French values)
+    SessionStatus statusEnum;
+    final dbStatus = sessionData['status'] as String?;
+    debugPrint('📊 DB Status value read: "$dbStatus"');
+    if (dbStatus == 'pending' || dbStatus == 'en_cours' || dbStatus == 'En cours') {
+      statusEnum = SessionStatus.pending;
+    } else if (dbStatus == 'completed' || dbStatus == 'termine' || dbStatus == 'Terminé') {
+      statusEnum = SessionStatus.completed;
+    } else if (dbStatus == 'canceled' || dbStatus == 'cancelled' || dbStatus == 'annule' || dbStatus == 'Annulé') {
+      statusEnum = SessionStatus.cancelled;
+    } else {
+      statusEnum = SessionStatus.completed;
+    }
+    
     return Session(
       id: sessionId,
       patientId: patientId,
       createdAt: createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now(),
-      status: SessionStatus.values.firstWhere(
-        (e) => e.name == sessionData['status'],
-        orElse: () => SessionStatus.completed,
-      ),
+      status: statusEnum,
       valid: sessionData['valid'] as bool? ?? true,
       footMetrics: metrics,
       footScan: scan,

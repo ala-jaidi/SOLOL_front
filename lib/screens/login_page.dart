@@ -58,16 +58,16 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-            ],
+          image: DecorationImage(
+            image: AssetImage(isDark 
+                ? 'assets/images/darkmode.png' 
+                : 'assets/images/auth_background.png'),
+            fit: BoxFit.cover,
           ),
         ),
         child: SafeArea(
@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
                 constraints: const BoxConstraints(maxWidth: 450),
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: isDark ? 0.9 : 1.0),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
@@ -94,23 +94,12 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Logo SOLOL
+                      // Logo SOLOL-B2B Plateforme
                       Image.asset(
-                        'assets/icons/SOLOL.png',
-                        width: 80,
-                        height: 80,
+                        'assets/images/solol_B2B_platforme.png',
+                        height: 180,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'SOLOL',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
                       Text(
                         AppLocalizations.of(context).isFrench ? 'Connectez-vous a votre compte' : 'Sign in to your account',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(

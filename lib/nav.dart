@@ -16,6 +16,7 @@ import 'package:lidarmesure/screens/add_patient_page.dart';
 import 'package:lidarmesure/screens/add_session_page.dart';
 import 'package:lidarmesure/screens/session_detail_page.dart';
 import 'package:lidarmesure/screens/complete_profile_page.dart';
+import 'package:lidarmesure/screens/edit_patient_page.dart';
 import 'package:lidarmesure/supabase/supabase_config.dart';
 
 class AppRouter {
@@ -114,6 +115,16 @@ class AppRouter {
           final id = state.pathParameters['id']!;
           return NoTransitionPage(
             child: PatientDetailPage(patientId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/patient/:id/edit',
+        name: 'editPatient',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return NoTransitionPage(
+            child: EditPatientPage(patientId: id),
           );
         },
       ),
