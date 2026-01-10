@@ -7,6 +7,7 @@ import 'package:lidarmesure/models/user.dart';
 import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/services/patient_service.dart';
 import 'package:lidarmesure/services/pdf_report_service.dart';
+import 'package:lidarmesure/components/medical_questionnaire_form.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/l10n/app_localizations.dart';
 
@@ -560,6 +561,32 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                           ],
                         ),
                       ).animate().fadeIn(delay: 300.ms),
+
+                      SizedBox(height: AppSpacing.lg),
+
+                      // Medical Questionnaire Section
+                      Container(
+                        padding: AppSpacing.paddingMd,
+                        decoration: BoxDecoration(
+                          color: cs.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MedicalQuestionnaireForm(
+                              questionnaires: s.questionnaires,
+                              onChanged: (_) {},
+                              readOnly: true,
+                            ),
+                            if (s.questionnaires.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              MedicalConditionsSummary(questionnaires: s.questionnaires),
+                            ],
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: 350.ms),
 
                       SizedBox(height: AppSpacing.lg),
 

@@ -3,7 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lidarmesure/components/section_card.dart';
 import 'package:lidarmesure/components/gradient_header.dart';
+import 'package:lidarmesure/components/medical_questionnaire_form.dart';
 import 'package:lidarmesure/models/session.dart';
+import 'package:lidarmesure/models/medical_questionnaire.dart';
 import 'package:lidarmesure/models/user.dart';
 import 'package:lidarmesure/services/patient_service.dart';
 import 'package:lidarmesure/services/session_service.dart';
@@ -30,6 +32,7 @@ class _AddSessionPageState extends State<AddSessionPage> {
   DateTime _date = DateTime.now();
   bool _loading = true;
   bool _submitting = false;
+  List<MedicalQuestionnaire> _questionnaires = [];
 
   @override
   void initState() {
@@ -100,6 +103,17 @@ class _AddSessionPageState extends State<AddSessionPage> {
                           ),
                         ],
                       ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1),
+                      const SizedBox(height: 16),
+                      
+                      // Medical Questionnaire Section
+                      SectionCard(
+                        children: [
+                          MedicalQuestionnaireForm(
+                            questionnaires: _questionnaires,
+                            onChanged: (q) => setState(() => _questionnaires = q),
+                          ),
+                        ],
+                      ).animate().fadeIn(duration: 300.ms, delay: 100.ms).slideY(begin: 0.1),
                       const SizedBox(height: 24),
                       Row(
                         children: [
@@ -229,7 +243,7 @@ class _AddSessionPageState extends State<AddSessionPage> {
         status: _status,
         valid: _valid,
         footMetrics: const [],
-        questionnaires: const [],
+        questionnaires: _questionnaires,
         footScan: null,
         updatedAt: now,
       );
