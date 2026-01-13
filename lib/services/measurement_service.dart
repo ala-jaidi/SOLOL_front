@@ -2,47 +2,47 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MeasurementService {
-  // CONFIGURATION API
-  // Pour la production (Podologue) : Remplacer par l'IP fixe du PC ou l'URL du serveur Cloud
-  // Ex: 'http://192.168.1.15:8000' ou 'https://api.lidarmesure.com'
-  static const String _baseUrl = 'http://192.168.1.175:8000';
+  // API Base URL from environment variables
+  static String get _baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.1.175:8000';
 
-  /// Analyse hybride avec les deux vues (dessus + profil) en une seule requête
-  /// Compatible avec l'endpoint POST /measure du backend python_test_solol
+  /// Analyse hybride avec les deux vues (dessus + profil)
+  /// Appelle séquentiellement /measure/top/ et /measure/side/
   Future<Map<String, dynamic>> analyzeHybrid({
     required File topView,
     required File sideView,
     String footSide = 'right', // 'right' ou 'left'
   }) async {
-    final uri = Uri.parse('$_baseUrl/measure');
-    final request = http.MultipartRequest('POST', uri);
-    
-    // Ajouter le paramètre foot_side
-    request.fields['foot_side'] = footSide;
-    
-    // Ajouter les deux images
-    final topFile = await http.MultipartFile.fromPath('top_view', topView.path);
-    final sideFile = await http.MultipartFile.fromPath('side_view', sideView.path);
-    request.files.add(topFile);
-    request.files.add(sideFile);
-
     try {
-      debugPrint('🚀 Envoi mesure hybride vers $uri (foot_side: $footSide)');
-      final responseStream = await request.send().timeout(
-        const Duration(seconds: 180),
-        onTimeout: () => throw Exception('Timeout mesure hybride (180s)'),
-      );
+      debugPrint('🚀 Analyse hybride: envoi des deux vues (foot_side: $footSide)');
       
-      final response = await http.Response.fromStream(responseStream);
+      // 1. Analyser la vue de dessus (largeur)
+      debugPrint('📐 Étape 1/2: Analyse vue dessus...');
+      final topResult = await analyzeTopView(image: topView, footSide: footSide);
       
-      if (response.statusCode == 200) {
-        debugPrint('✅ Mesure hybride analysée avec succès');
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        throw Exception('Erreur serveur: ${response.body}');
-      }
+      // 2. Analyser la vue de profil (longueur)
+      debugPrint('📏 Étape 2/2: Analyse vue profil...');
+      final sideResult = await analyzeSideView(image: sideView, footSide: footSide);
+      
+      // 3. Combiner les résultats
+      final combinedResult = {
+        'success': true,
+        'foot_side': footSide,
+        'length_cm': sideResult['length_cm'] ?? 0.0,
+        'width_cm': topResult['width_cm'] ?? 0.0,
+        'toe_angle_deg': topResult['toe_angle_deg'] ?? 0.0,
+        'toe_width_cm': topResult['toe_width_cm'] ?? 0.0,
+        'confidence': sideResult['confidence'] ?? 0.0,
+        'top_debug_image_url': topResult['debug_image_url'],
+        'side_debug_image_url': sideResult['debug_image_url'],
+        'dxf_url': topResult['dxf_url'] ?? sideResult['dxf_url'],
+      };
+      
+      debugPrint('✅ Analyse hybride terminée: L=${combinedResult['length_cm']}cm, W=${combinedResult['width_cm']}cm');
+      return combinedResult;
+      
     } catch (e) {
       debugPrint('❌ Erreur mesure hybride: $e');
       rethrow;

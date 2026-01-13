@@ -8,6 +8,7 @@ import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/services/patient_service.dart';
 import 'package:lidarmesure/services/pdf_report_service.dart';
 import 'package:lidarmesure/components/medical_questionnaire_form.dart';
+import 'package:lidarmesure/components/podology_ai_chat.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/l10n/app_localizations.dart';
 
@@ -306,6 +307,9 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     
     return Scaffold(
       backgroundColor: cs.surface,
+      floatingActionButton: _patient != null
+          ? _buildAIAssistantFAB(context, s, cs, isDark)
+          : null,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -564,6 +568,12 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
 
                       SizedBox(height: AppSpacing.lg),
 
+                      // AI Analysis Section
+                      if (_patient != null)
+                        _buildAIAnalysisCard(context, s, cs, isDark),
+
+                      if (_patient != null) SizedBox(height: AppSpacing.lg),
+
                       // Medical Questionnaire Section
                       Container(
                         padding: AppSpacing.paddingMd,
@@ -646,6 +656,204 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     );
   }
 
+  Widget _buildAIAnalysisCard(BuildContext context, Session session, ColorScheme cs, bool isDark) {
+    final l10n = AppLocalizations.of(context);
+    final hasMetrics = session.footMetrics.isNotEmpty;
+    final hasImages = session.footScan != null;
+    
+    return Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  cs.primary.withOpacity(0.15),
+                  cs.primary.withOpacity(0.05),
+                ]
+              : [
+                  cs.primary.withOpacity(0.08),
+                  cs.primary.withOpacity(0.02),
+                ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: cs.primary.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primary, cs.primary.withOpacity(0.7)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.isFrench ? 'Assistant IA Podologique' : 'Podology AI Assistant',
+                      style: context.textStyles.titleMedium?.semiBold,
+                    ),
+                    Text(
+                      l10n.isFrench 
+                          ? 'Analyse clinique intelligente' 
+                          : 'Intelligent clinical analysis',
+                      style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cs.secondary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, color: cs.secondary, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Gemini',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: cs.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: AppSpacing.md),
+          
+          // Status chips
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusChip(
+                icon: Icons.straighten,
+                label: l10n.isFrench ? 'Métriques' : 'Metrics',
+                isActive: hasMetrics,
+                cs: cs,
+              ),
+              _StatusChip(
+                icon: Icons.image_outlined,
+                label: l10n.isFrench ? 'Images' : 'Images',
+                isActive: hasImages,
+                cs: cs,
+              ),
+              _StatusChip(
+                icon: Icons.person_outline,
+                label: l10n.isFrench ? 'Profil patient' : 'Patient profile',
+                isActive: true,
+                cs: cs,
+              ),
+            ],
+          ),
+          
+          SizedBox(height: AppSpacing.md),
+          
+          // Description
+          Text(
+            l10n.isFrench
+                ? 'L\'assistant IA peut analyser les images du scan, identifier les anomalies (Hallux Valgus, Pronation, etc.) et recommander des semelles adaptées.'
+                : 'The AI assistant can analyze scan images, identify anomalies (Hallux Valgus, Pronation, etc.) and recommend suitable insoles.',
+            style: context.textStyles.bodySmall?.withColor(cs.onSurfaceVariant),
+          ),
+          
+          SizedBox(height: AppSpacing.md),
+          
+          // Action button
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _openAIChat(context, session),
+              icon: const Icon(Icons.chat_rounded, size: 18),
+              label: Text(
+                l10n.isFrench ? 'Démarrer l\'analyse IA' : 'Start AI Analysis',
+              ),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildAIAssistantFAB(BuildContext context, Session session, ColorScheme cs, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [cs.primary, cs.primary.withOpacity(0.8)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cs.primary.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: () => _openAIChat(context, session),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        highlightElevation: 0,
+        icon: const Icon(Icons.psychology_rounded, color: Colors.white),
+        label: Text(
+          AppLocalizations.of(context).isFrench ? 'Assistant IA' : 'AI Assistant',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ).animate()
+      .fadeIn(delay: 500.ms)
+      .slideY(begin: 0.3)
+      .then()
+      .shimmer(duration: 2000.ms, delay: 1000.ms);
+  }
+
+  void _openAIChat(BuildContext context, Session session) {
+    if (_patient == null) return;
+    
+    PodologyAIChat.show(
+      context,
+      patient: _patient!,
+      session: session,
+      topViewUrl: session.footScan?.topView,
+      sideViewUrl: session.footScan?.sideView,
+    );
+  }
+
   Future<void> _printPdf(BuildContext context) async {
     if (_session == null || _patient == null) return;
     
@@ -714,6 +922,57 @@ class _InfoRow extends StatelessWidget {
 }
 
 // Old header widget removed in favor of GradientHeader
+
+class _StatusChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final ColorScheme cs;
+
+  const _StatusChip({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.cs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isActive 
+            ? cs.secondary.withOpacity(0.12)
+            : cs.outline.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive 
+              ? cs.secondary.withOpacity(0.3)
+              : cs.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? Icons.check_circle : icon,
+            size: 14,
+            color: isActive ? cs.secondary : cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isActive ? cs.secondary : cs.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _NotFound extends StatelessWidget {
   final VoidCallback onBack;

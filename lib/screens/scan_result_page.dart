@@ -52,9 +52,9 @@ class ScanResultPage extends StatelessWidget {
     final length = lengthRaw?.toString() ?? 'N/A';
     final width = widthRaw?.toString() ?? 'N/A';
     
-    // If backend returns numbers, format them
-    final lengthDisplay = double.tryParse(length)?.toStringAsFixed(1) ?? length;
-    final widthDisplay = double.tryParse(width)?.toStringAsFixed(1) ?? width;
+    // Afficher les valeurs exactes sans arrondi
+    final lengthDisplay = length;
+    final widthDisplay = width;
 
     return Scaffold(
       body: SafeArea(

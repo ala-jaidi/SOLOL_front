@@ -2,17 +2,18 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import 'package:lidarmesure/models/chat_message.dart';
 import 'package:lidarmesure/models/chat_thread.dart';
 import 'package:lidarmesure/supabase/supabase_config.dart';
 import 'package:uuid/uuid.dart';
 
-/// Chat client that uses Google Generative AI (Gemini) and persists chat history to Supabase.
+/// Chat client that uses Groq API (FREE) and persists chat history to Supabase.
 class ChatService {
-  // TODO: Replace with your actual Google AI Studio API Key
-  static const String _apiKey = 'YOUR_GOOGLE_AI_STUDIO_API_KEY';
-  static const String _modelName = 'gemini-1.5-flash';
+  static String get _apiKey => dotenv.env['GROQ_API_KEY'] ?? '';
+  static const String _modelName = 'llama-3.3-70b-versatile';
+  static const String _apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
   /// Optional default template key stored in the `prompt_templates` table.
   /// Set to null to skip template lookup on server.
@@ -21,9 +22,9 @@ class ChatService {
   // Cache for system prompts to avoid repeated DB calls
   final Map<String, String> _systemPromptCache = {};
 
-  Future<GenerativeModel> _getModel({String? templateKey}) async {
+  /// Get system prompt from cache or database
+  Future<String?> _getSystemPrompt({String? templateKey}) async {
     final key = templateKey ?? defaultTemplateKey;
-    Content? systemInstruction;
 
     if (key != null) {
       if (!_systemPromptCache.containsKey(key)) {
@@ -43,15 +44,10 @@ class ChatService {
       }
 
       if (_systemPromptCache.containsKey(key)) {
-        systemInstruction = Content.system(_systemPromptCache[key]!);
+        return _systemPromptCache[key];
       }
     }
-
-    return GenerativeModel(
-      model: _modelName,
-      apiKey: _apiKey,
-      systemInstruction: systemInstruction,
-    );
+    return null;
   }
 
     // ---------------------------
@@ -230,41 +226,81 @@ class ChatService {
     String? templateKey,
   }) async {
     try {
-      final model = await _getModel(templateKey: templateKey);
+      final systemPrompt = await _getSystemPrompt(templateKey: templateKey);
       
-      // In a real app, you might want to load chat history to provide context
-      // For now, we just send the current message
-      final content = [Content.text(message)];
-      final response = await model.generateContent(content);
+      final messages = <Map<String, dynamic>>[];
+      if (systemPrompt != null) {
+        messages.add({'role': 'system', 'content': systemPrompt});
+      }
+      messages.add({'role': 'user', 'content': message});
       
-      final reply = response.text;
-      if (reply != null && reply.isNotEmpty) return reply;
-      
-      throw Exception('Réponse vide du modèle');
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'model': _modelName,
+          'max_tokens': 2048,
+          'messages': messages,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final choices = data['choices'] as List;
+        if (choices.isNotEmpty) {
+          return choices[0]['message']['content'] as String;
+        }
+        throw Exception('Réponse vide du modèle');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error']?['message'] ?? 'API Error: ${response.statusCode}');
+      }
     } catch (e, st) {
       debugPrint('ChatService error: $e\n$st');
       rethrow;
     }
   }
 
-  /// Streams an assistant reply token-by-token.
+  /// Streams an assistant reply (returns full response for Groq).
   Stream<String> streamMessage({
     required String message,
     String? sessionId,
     String? templateKey,
   }) async* {
     try {
-      final model = await _getModel(templateKey: templateKey);
+      final systemPrompt = await _getSystemPrompt(templateKey: templateKey);
+      
+      final messages = <Map<String, dynamic>>[];
+      if (systemPrompt != null) {
+        messages.add({'role': 'system', 'content': systemPrompt});
+      }
+      messages.add({'role': 'user', 'content': message});
+      
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'model': _modelName,
+          'max_tokens': 2048,
+          'messages': messages,
+        }),
+      );
 
-       // In a real app, you might want to load chat history to provide context
-      final content = [Content.text(message)];
-      final response = model.generateContentStream(content);
-
-      await for (final chunk in response) {
-        final text = chunk.text;
-        if (text != null && text.isNotEmpty) {
-          yield text;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final choices = data['choices'] as List;
+        if (choices.isNotEmpty) {
+          yield choices[0]['message']['content'] as String;
         }
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error']?['message'] ?? 'API Error: ${response.statusCode}');
       }
     } catch (e, st) {
       debugPrint('ChatService.stream error: $e\n$st');

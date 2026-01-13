@@ -16,6 +16,8 @@ import 'package:lidarmesure/components/modern_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:lidarmesure/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:lidarmesure/state/notification_center.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
@@ -107,6 +109,16 @@ class _ScanPageState extends State<ScanPage> {
       _isScanning = true;
     });
 
+    // Notification: Analyse en cours
+    final notificationCenter = context.read<NotificationCenter>();
+    final l10n = AppLocalizations.read(context);
+    await notificationCenter.add(
+      title: l10n.isFrench ? 'Analyse en cours' : 'Analysis in progress',
+      body: l10n.isFrench 
+          ? 'Les photos de ${_selectedPatient!.fullName} sont en cours d\'analyse...'
+          : 'Photos of ${_selectedPatient!.fullName} are being analyzed...',
+    );
+
     try {
       // Utiliser l'endpoint hybride /measure qui envoie les deux images en une seule requête
       // Compatible avec le backend python_test_solol
@@ -140,9 +152,17 @@ class _ScanPageState extends State<ScanPage> {
             updatedAt: now,
           );
 
+          // Utiliser les URLs de debug du serveur (images analysées par l'IA)
+          final topDebugUrl = finalResult['top_debug_image_url'] as String?;
+          final sideDebugUrl = finalResult['side_debug_image_url'] as String?;
+          
           final scan = FootScan(
-            topView: _topImage!.path,
-            sideView: _sideImage?.path ?? '',
+            topView: topDebugUrl != null 
+                ? MeasurementService.getImageUrl(topDebugUrl) 
+                : _topImage!.path,
+            sideView: sideDebugUrl != null 
+                ? MeasurementService.getImageUrl(sideDebugUrl) 
+                : (_sideImage?.path ?? ''),
             angle: AngleType.top,
             createdAt: now,
             updatedAt: now,
@@ -162,8 +182,15 @@ class _ScanPageState extends State<ScanPage> {
           await _sessionService.addSession(session);
           debugPrint('✅ Session sauvegardée avec succès: $sessionId');
           
+          // Notification: Résultats prêts
+          await notificationCenter.add(
+            title: l10n.isFrench ? 'Résultats prêts' : 'Results ready',
+            body: l10n.isFrench 
+                ? 'L\'analyse de ${_selectedPatient!.fullName} est terminée. Longueur: ${metrics.formattedLongueur}, Largeur: ${metrics.formattedLargeur}'
+                : 'Analysis of ${_selectedPatient!.fullName} is complete. Length: ${metrics.formattedLongueur}, Width: ${metrics.formattedLargeur}',
+          );
+          
           if (mounted) {
-            final l10n = AppLocalizations.read(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(l10n.isFrench ? 'Resultats sauvegardes avec succes' : 'Results saved successfully'),
@@ -206,6 +233,14 @@ class _ScanPageState extends State<ScanPage> {
       } else if (e.toString().contains('ClientException')) {
          errorMessage = 'Erreur de connexion: Vérifiez que l\'adresse IP est correcte.';
       }
+
+      // Notification: Erreur d'analyse
+      await notificationCenter.add(
+        title: l10n.isFrench ? 'Erreur d\'analyse' : 'Analysis error',
+        body: l10n.isFrench 
+            ? 'L\'analyse de ${_selectedPatient!.fullName} a échoué. Veuillez réessayer.'
+            : 'Analysis of ${_selectedPatient!.fullName} failed. Please try again.',
+      );
 
       debugPrint('❌ Erreur dans _finishAndShowResults: $e');
       if (mounted) {

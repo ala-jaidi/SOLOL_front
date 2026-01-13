@@ -47,3 +47,7 @@ app.*.map.json
 # iOS config
 /ios/Flutter/Generated.xcconfig
 /ios/Flutter/flutter_export_environment.sh
+
+# Environment variables - NEVER COMMIT
+.env
+*.env.local

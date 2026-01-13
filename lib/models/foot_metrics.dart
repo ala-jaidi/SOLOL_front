@@ -58,7 +58,9 @@ class FootMetrics {
   );
 
   String get sideLabel => side == FootSide.droite ? 'Pied Droit' : 'Pied Gauche';
-  String get formattedLongueur => '${longueur.toStringAsFixed(1)} cm';
-  String get formattedLargeur => '${largeur.toStringAsFixed(1)} cm';
+  String get formattedLongueur => '${longueur.toStringAsFixed(2)} cm';
+  String get formattedLargeur => '${largeur.toStringAsFixed(2)} cm';
+  String get exactLongueur => '$longueur cm';
+  String get exactLargeur => '$largeur cm';
   String get confidencePercentage => '${(confidence * 100).toStringAsFixed(0)}%';
 }

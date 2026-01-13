@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'theme.dart';
 import 'nav.dart';
 import 'state/app_settings.dart';
@@ -15,8 +16,12 @@ import 'supabase/supabase_config.dart';
 /// - go_router navigation
 /// - Material 3 theming with light/dark modes
 /// - Supabase initialization
+/// - Environment variables from .env
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
   
   // Initialize Supabase
   await SupabaseConfig.initialize();

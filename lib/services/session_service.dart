@@ -69,17 +69,17 @@ class SessionService {
   Future<String> addSession(Session session) async {
     try {
       // Map status to database expected values
-      // Database constraint expects: 'En cours', 'Terminé', 'Annulé'
+      // Database constraint expects: 'enCours', 'termine', 'annule'
       String statusValue;
       switch (session.status) {
         case SessionStatus.pending:
-          statusValue = 'En cours';
+          statusValue = 'enCours';
           break;
         case SessionStatus.completed:
-          statusValue = 'Terminé';
+          statusValue = 'termine';
           break;
         case SessionStatus.cancelled:
-          statusValue = 'Annulé';
+          statusValue = 'annule';
           break;
       }
       
@@ -110,26 +110,27 @@ class SessionService {
         await _addQuestionnaire(sessionId, questionnaire);
       }
       return sessionId;
-    } catch (e) {
-      debugPrint('Error adding session: $e');
-      throw Exception('Échec de l\'ajout de la session');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error adding session: $e');
+      debugPrint('📍 Stack trace: $stackTrace');
+      throw Exception('Échec de l\'ajout de la session: $e');
     }
   }
 
   Future<void> updateSession(Session session) async {
     try {
       // Map status to database expected values
-      // Database constraint expects: 'En cours', 'Terminé', 'Annulé'
+      // Database constraint expects: 'enCours', 'termine', 'annule'
       String statusValue;
       switch (session.status) {
         case SessionStatus.pending:
-          statusValue = 'En cours';
+          statusValue = 'enCours';
           break;
         case SessionStatus.completed:
-          statusValue = 'Terminé';
+          statusValue = 'termine';
           break;
         case SessionStatus.cancelled:
-          statusValue = 'Annulé';
+          statusValue = 'annule';
           break;
       }
       
@@ -224,15 +225,16 @@ class SessionService {
     final updatedAtStr = sessionData['updated_at'] as String?;
     final patientId = sessionData['patient_id'] as String? ?? '';
 
-    // Map database status back to enum (handle French values)
+    // Map database status back to enum
+    // Database values: 'enCours', 'termine', 'annule'
     SessionStatus statusEnum;
     final dbStatus = sessionData['status'] as String?;
     debugPrint('📊 DB Status value read: "$dbStatus"');
-    if (dbStatus == 'pending' || dbStatus == 'en_cours' || dbStatus == 'En cours') {
+    if (dbStatus == 'enCours') {
       statusEnum = SessionStatus.pending;
-    } else if (dbStatus == 'completed' || dbStatus == 'termine' || dbStatus == 'Terminé') {
+    } else if (dbStatus == 'termine') {
       statusEnum = SessionStatus.completed;
-    } else if (dbStatus == 'canceled' || dbStatus == 'cancelled' || dbStatus == 'annule' || dbStatus == 'Annulé') {
+    } else if (dbStatus == 'annule') {
       statusEnum = SessionStatus.cancelled;
     } else {
       statusEnum = SessionStatus.completed;

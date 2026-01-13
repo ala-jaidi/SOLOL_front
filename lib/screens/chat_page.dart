@@ -7,10 +7,17 @@ import 'package:go_router/go_router.dart';
 import 'package:lidarmesure/models/chat_message.dart';
 import 'package:lidarmesure/services/chat_service.dart';
 import 'package:lidarmesure/models/chat_thread.dart';
+import 'package:lidarmesure/models/user.dart';
+import 'package:lidarmesure/models/session.dart';
+import 'package:lidarmesure/services/patient_service.dart';
+import 'package:lidarmesure/services/session_service.dart';
+import 'package:lidarmesure/services/podology_ai_service.dart';
+import 'package:lidarmesure/services/measurement_service.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:lidarmesure/components/app_sidebar.dart';
 import 'package:uuid/uuid.dart';
 import 'package:lidarmesure/l10n/app_localizations.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -24,19 +31,118 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatService _chat = ChatService();
+  final PatientService _patientService = PatientService();
+  final SessionService _sessionService = SessionService();
+  PodologyAIService? _podologyAI;
+  
   bool _isTyping = false;
   bool _showJumpToBottom = false;
-    String _sessionId = const Uuid().v4();
+  String _sessionId = const Uuid().v4();
   List<String> _templates = [];
   String? _selectedTemplate;
   bool _loadingTemplates = false;
-    ChatThread? _thread;
+  ChatThread? _thread;
+  
+  // Podology AI mode
+  bool _isPodologyMode = false;
+  Patient? _selectedPatient;
+  Session? _selectedSession;
+  List<Patient> _patients = [];
+  bool _loadingPatients = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_handleScroll);
     _loadTemplates().then((_) => _initThread());
+    _loadPatients();
+  }
+
+  Future<void> _loadPatients() async {
+    setState(() => _loadingPatients = true);
+    try {
+      final patients = await _patientService.getAllPatients();
+      if (mounted) {
+        setState(() {
+          _patients = patients;
+          _loadingPatients = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading patients: $e');
+      if (mounted) setState(() => _loadingPatients = false);
+    }
+  }
+
+  Future<void> _selectPatient(Patient patient) async {
+    setState(() => _loadingPatients = true);
+    try {
+      final sessions = await _sessionService.getSessionsByPatientId(patient.id);
+      final latestSession = sessions.isNotEmpty ? sessions.first : null;
+      
+      _podologyAI = PodologyAIService();
+      
+      if (latestSession != null) {
+        _podologyAI!.initializeContext(patient: patient, session: latestSession);
+      }
+      
+      setState(() {
+        _selectedPatient = patient;
+        _selectedSession = latestSession;
+        _isPodologyMode = true;
+        _loadingPatients = false;
+        _messages.clear();
+        
+        // Add welcome message
+        _messages.add(ChatMessage(
+          content: _buildPodologyWelcome(patient, latestSession),
+          isUser: false,
+          status: ChatDeliveryStatus.sent,
+        ));
+      });
+    } catch (e) {
+      debugPrint('Error selecting patient: $e');
+      if (mounted) {
+        setState(() => _loadingPatients = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
+
+  String _buildPodologyWelcome(Patient patient, Session? session) {
+    final buffer = StringBuffer();
+    buffer.writeln('👋 **Mode Analyse Podologique Activé**\n');
+    buffer.writeln('📋 **Patient**: ${patient.fullName}');
+    buffer.writeln('👤 **Âge**: ${patient.age} ans | **Pointure**: ${patient.pointure}');
+    buffer.writeln('📏 **Taille**: ${patient.taille} cm | **Poids**: ${patient.poids} kg\n');
+    
+    if (session != null && session.footMetrics.isNotEmpty) {
+      buffer.writeln('📊 **Dernières mesures** (${session.formattedDate}):');
+      for (final m in session.footMetrics) {
+        buffer.writeln('- ${m.sideLabel}: **${m.formattedLongueur}** × **${m.formattedLargeur}**');
+      }
+      buffer.writeln();
+    }
+    
+    buffer.writeln('💡 **Comment puis-je vous aider ?**');
+    buffer.writeln('- Analyser les images de scan');
+    buffer.writeln('- Identifier les anomalies (Hallux Valgus, Pronation...)');
+    buffer.writeln('- Recommander des semelles adaptées');
+    
+    return buffer.toString();
+  }
+
+  void _exitPodologyMode() {
+    setState(() {
+      _isPodologyMode = false;
+      _selectedPatient = null;
+      _selectedSession = null;
+      _podologyAI = null;
+      _messages.clear();
+    });
+    _initThread();
   }
 
   @override
@@ -72,53 +178,84 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
-      // Persist user message
-      final thread = _thread ?? await _initThread();
-      await _chat.appendMessage(threadId: thread.id, isUser: true, content: text);
-      _updateMessageStatus(userMsg.id, ChatDeliveryStatus.sent);
-      // Create assistant placeholder and stream deltas
-      final botMsg = ChatMessage(content: '', isUser: false, status: ChatDeliveryStatus.pending);
-      setState(() => _messages.add(botMsg));
-      String buffer = '';
-      bool gotStream = false;
-      try {
-        await for (final delta in _chat.streamMessage(
-          message: text,
-          sessionId: _sessionId,
-          templateKey: _selectedTemplate,
-        )) {
-          gotStream = true;
-          buffer += delta;
+      // Use Podology AI if in podology mode
+      if (_isPodologyMode && _podologyAI != null) {
+        _updateMessageStatus(userMsg.id, ChatDeliveryStatus.sent);
+        final botMsg = ChatMessage(content: '', isUser: false, status: ChatDeliveryStatus.pending);
+        setState(() => _messages.add(botMsg));
+        
+        String buffer = '';
+        try {
+          await for (final delta in _podologyAI!.streamMessage(text)) {
+            buffer += delta;
+            final idx = _messages.indexWhere((m) => m.id == botMsg.id);
+            if (idx != -1 && mounted) {
+              setState(() => _messages[idx] = _messages[idx].copyWith(content: buffer));
+              _scrollToBottom();
+            }
+          }
+        } catch (e) {
+          // Fallback to non-streaming
+          buffer = await _podologyAI!.sendMessage(text);
           final idx = _messages.indexWhere((m) => m.id == botMsg.id);
           if (idx != -1 && mounted) {
             setState(() => _messages[idx] = _messages[idx].copyWith(content: buffer));
-            _scrollToBottom();
           }
         }
-      } catch (streamErr, st) {
-        debugPrint('Chat stream failed, falling back to non-stream invoke: $streamErr\n$st');
-        // Fallback to non-stream call so the user still gets a reply
+        
+        final idx = _messages.indexWhere((m) => m.id == botMsg.id);
+        if (idx != -1 && mounted) {
+          setState(() => _messages[idx] = _messages[idx].copyWith(status: ChatDeliveryStatus.sent));
+        }
+      } else {
+        // Normal chat mode
+        final thread = _thread ?? await _initThread();
+        await _chat.appendMessage(threadId: thread.id, isUser: true, content: text);
+        _updateMessageStatus(userMsg.id, ChatDeliveryStatus.sent);
+        
+        final botMsg = ChatMessage(content: '', isUser: false, status: ChatDeliveryStatus.pending);
+        setState(() => _messages.add(botMsg));
+        String buffer = '';
+        
         try {
-          final reply = await _chat.sendMessage(
+          await for (final delta in _chat.streamMessage(
             message: text,
             sessionId: _sessionId,
             templateKey: _selectedTemplate,
-          );
-          buffer = reply;
-          final idx = _messages.indexWhere((m) => m.id == botMsg.id);
-          if (idx != -1 && mounted) {
-            setState(() => _messages[idx] = _messages[idx].copyWith(content: buffer));
-            _scrollToBottom();
+          )) {
+            buffer += delta;
+            final idx = _messages.indexWhere((m) => m.id == botMsg.id);
+            if (idx != -1 && mounted) {
+              setState(() => _messages[idx] = _messages[idx].copyWith(content: buffer));
+              _scrollToBottom();
+            }
           }
-        } catch (invokeErr, st2) {
-          debugPrint('Fallback invoke also failed: $invokeErr\n$st2');
-          rethrow; // Let outer catch display error
+        } catch (streamErr, st) {
+          debugPrint('Chat stream failed, falling back to non-stream invoke: $streamErr\n$st');
+          try {
+            final reply = await _chat.sendMessage(
+              message: text,
+              sessionId: _sessionId,
+              templateKey: _selectedTemplate,
+            );
+            buffer = reply;
+            final idx = _messages.indexWhere((m) => m.id == botMsg.id);
+            if (idx != -1 && mounted) {
+              setState(() => _messages[idx] = _messages[idx].copyWith(content: buffer));
+              _scrollToBottom();
+            }
+          } catch (invokeErr, st2) {
+            debugPrint('Fallback invoke also failed: $invokeErr\n$st2');
+            rethrow;
+          }
+        }
+        
+        await _chat.appendMessage(threadId: thread.id, isUser: false, content: buffer);
+        final idx = _messages.indexWhere((m) => m.id == botMsg.id);
+        if (idx != -1 && mounted) {
+          setState(() => _messages[idx] = _messages[idx].copyWith(status: ChatDeliveryStatus.sent));
         }
       }
-      // Persist assistant message once complete (from stream or fallback)
-      await _chat.appendMessage(threadId: thread.id, isUser: false, content: buffer);
-      final idx = _messages.indexWhere((m) => m.id == botMsg.id);
-      if (idx != -1 && mounted) setState(() => _messages[idx] = _messages[idx].copyWith(status: ChatDeliveryStatus.sent));
     } catch (e) {
       _updateMessageStatus(userMsg.id, ChatDeliveryStatus.error);
       if (mounted) {
@@ -215,11 +352,13 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _showDeleteHistoryDialog(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    final confirmed = await showDialog<bool>(
+    // Options: 'current' = current thread, 'all' = all threads
+    final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A2A2F),
+        backgroundColor: isDark ? const Color(0xFF1A2A2F) : cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -234,36 +373,61 @@ class _ChatPageState extends State<ChatPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                l10n.isFrench ? 'Effacer l\'historique' : 'Clear History',
-                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                l10n.isFrench ? 'Effacer les conversations' : 'Clear Conversations',
+                style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface),
               ),
             ),
           ],
         ),
-        content: Text(
-          l10n.isFrench 
-              ? 'Êtes-vous sûr de vouloir effacer tout l\'historique de conversation ? Cette action est irréversible.'
-              : 'Are you sure you want to clear all conversation history? This action cannot be undone.',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.isFrench 
+                  ? 'Que souhaitez-vous effacer ?'
+                  : 'What do you want to clear?',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 16),
+            // Option 1: Current conversation
+            _DeleteOptionTile(
+              icon: Icons.chat_bubble_outline_rounded,
+              title: l10n.isFrench ? 'Conversation actuelle' : 'Current conversation',
+              subtitle: l10n.isFrench ? 'Effacer cette conversation uniquement' : 'Clear this conversation only',
+              onTap: () => Navigator.of(ctx).pop('current'),
+              cs: cs,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            // Option 2: All conversations
+            _DeleteOptionTile(
+              icon: Icons.delete_sweep_rounded,
+              title: l10n.isFrench ? 'Toutes les conversations' : 'All conversations',
+              subtitle: l10n.isFrench ? 'Supprimer tout l\'historique' : 'Delete all history',
+              onTap: () => Navigator.of(ctx).pop('all'),
+              cs: cs,
+              isDark: isDark,
+              isDestructive: true,
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () => Navigator.of(ctx).pop(null),
             child: Text(l10n.isFrench ? 'Annuler' : 'Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: cs.error),
-            child: Text(l10n.isFrench ? 'Effacer' : 'Clear'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (result != null && mounted) {
       try {
-        // Delete from backend
-        if (_thread != null) {
+        if (result == 'all') {
+          // Delete ALL threads
+          await _chat.deleteAllThreads();
+        } else if (result == 'current' && _thread != null) {
+          // Delete current thread only
           await _chat.deleteThread(_thread!.id);
         }
         // Clear local state and create new thread
@@ -275,7 +439,9 @@ class _ChatPageState extends State<ChatPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(l10n.isFrench ? 'Historique effacé' : 'History cleared'),
+              content: Text(l10n.isFrench 
+                  ? (result == 'all' ? 'Toutes les conversations effacées' : 'Conversation effacée')
+                  : (result == 'all' ? 'All conversations cleared' : 'Conversation cleared')),
               backgroundColor: cs.primary,
             ),
           );
@@ -329,18 +495,60 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
         ),
-        title: Text(
-          l10n.isFrench ? 'Assistant SOLOL' : 'SOLOL Assistant',
-          style: TextStyle(
-            color: cs.onSurface,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
+        title: _isPodologyMode && _selectedPatient != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [cs.primary, cs.primary.withValues(alpha: 0.7)]),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _selectedPatient!.fullName,
+                        style: TextStyle(color: cs.onSurface, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        l10n.isFrench ? 'Mode Podologie' : 'Podology Mode',
+                        style: TextStyle(color: cs.primary, fontSize: 10, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            : Text(
+                l10n.isFrench ? 'Assistant SOLOL' : 'SOLOL Assistant',
+                style: TextStyle(color: cs.onSurface, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+        centerTitle: !_isPodologyMode,
         actions: [
+          // Exit podology mode button
+          if (_isPodologyMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: _exitPodologyMode,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: cs.tertiary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.close_rounded, color: cs.tertiary, size: 18),
+                ),
+              ),
+            ),
           // Delete chat history button
-          if (_messages.isNotEmpty)
+          if (_messages.isNotEmpty && !_isPodologyMode)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
@@ -403,6 +611,9 @@ class _ChatPageState extends State<ChatPage> {
                 Expanded(
                   child: _WelcomeScreen(
                     onTopicSelect: (text) => _sendText(text),
+                    patients: _patients,
+                    loadingPatients: _loadingPatients,
+                    onPatientSelect: _selectPatient,
                   ),
                 )
               else
@@ -440,10 +651,19 @@ bool _isSameDay(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-/// Welcome screen - simple greeting
+/// Welcome screen - with patient selector for podology mode
 class _WelcomeScreen extends StatelessWidget {
   final void Function(String) onTopicSelect;
-  const _WelcomeScreen({required this.onTopicSelect});
+  final List<Patient> patients;
+  final bool loadingPatients;
+  final void Function(Patient) onPatientSelect;
+  
+  const _WelcomeScreen({
+    required this.onTopicSelect,
+    required this.patients,
+    required this.loadingPatients,
+    required this.onPatientSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -451,15 +671,15 @@ class _WelcomeScreen extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const SizedBox(height: 40),
           // Modern AI Logo - Neural network style
           Stack(
             alignment: Alignment.center,
             children: [
-              // Outer glow ring
               Container(
                 width: 100,
                 height: 100,
@@ -475,7 +695,6 @@ class _WelcomeScreen extends StatelessWidget {
                 ),
               ).animate(onPlay: (c) => c.repeat(reverse: true))
                 .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 2000.ms),
-              // Inner circle with gradient
               Container(
                 width: 72,
                 height: 72,
@@ -484,10 +703,7 @@ class _WelcomeScreen extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      cs.primary.withValues(alpha: 0.9),
-                      cs.primary,
-                    ],
+                    colors: [cs.primary.withValues(alpha: 0.9), cs.primary],
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -500,13 +716,7 @@ class _WelcomeScreen extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Neural network icon
-                    Icon(
-                      Icons.psychology_rounded,
-                      color: cs.onPrimary,
-                      size: 32,
-                    ),
-                    // Sparkle accent
+                    Icon(Icons.psychology_rounded, color: cs.onPrimary, size: 32),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -525,20 +735,226 @@ class _WelcomeScreen extends StatelessWidget {
               ),
             ],
           ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.7, 0.7), end: const Offset(1, 1)),
+          
           const SizedBox(height: 24),
-          // Combined greeting
+          
           Text(
             l10n.isFrench 
                 ? 'Bonjour, comment puis-je vous aider ?'
                 : 'Hello, how can I help you?',
-            style: TextStyle(
-              color: cs.onSurface,
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: cs.onSurface, fontSize: 22, fontWeight: FontWeight.w600),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+          
+          const SizedBox(height: 32),
+          
+          // Podology Analysis Section
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [cs.primary.withValues(alpha: 0.15), cs.primary.withValues(alpha: 0.05)]
+                    : [cs.primary.withValues(alpha: 0.08), cs.primary.withValues(alpha: 0.02)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [cs.primary, cs.primary.withValues(alpha: 0.7)]),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      l10n.isFrench ? 'Analyse Podologique' : 'Podology Analysis',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: cs.onSurface),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.isFrench
+                      ? 'Sélectionnez un patient pour démarrer une analyse IA avec son historique de scans.'
+                      : 'Select a patient to start an AI analysis with their scan history.',
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                
+                if (loadingPatients)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
+                    ),
+                  )
+                else if (patients.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        l10n.isFrench ? 'Aucun patient disponible' : 'No patients available',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 100,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: patients.length > 5 ? 5 : patients.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final patient = patients[index];
+                        return _PatientChip(
+                          patient: patient,
+                          onTap: () => onPatientSelect(patient),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
+          
+          const SizedBox(height: 24),
+          
+          // Quick prompts
+          Text(
+            l10n.isFrench ? 'Ou posez une question générale' : 'Or ask a general question',
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              _QuickChip(
+                icon: Icons.help_outline,
+                label: l10n.isFrench ? 'Comment fonctionne SOLOL?' : 'How does SOLOL work?',
+                onTap: () => onTopicSelect(l10n.isFrench ? 'Comment fonctionne l\'application SOLOL?' : 'How does the SOLOL app work?'),
+              ),
+              _QuickChip(
+                icon: Icons.medical_information_outlined,
+                label: l10n.isFrench ? 'Types de semelles' : 'Types of insoles',
+                onTap: () => onTopicSelect(l10n.isFrench ? 'Quels sont les différents types de semelles orthopédiques?' : 'What are the different types of orthopedic insoles?'),
+              ),
+              _QuickChip(
+                icon: Icons.analytics_outlined,
+                label: l10n.isFrench ? 'Hallux Valgus' : 'Hallux Valgus',
+                onTap: () => onTopicSelect(l10n.isFrench ? 'Comment identifier et traiter un Hallux Valgus?' : 'How to identify and treat Hallux Valgus?'),
+              ),
+            ],
+          ).animate().fadeIn(delay: 400.ms),
+          
+          const SizedBox(height: 40),
         ],
+      ),
+    );
+  }
+}
+
+/// Patient selection chip
+class _PatientChip extends StatelessWidget {
+  final Patient patient;
+  final VoidCallback onTap;
+  
+  const _PatientChip({required this.patient, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 100,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : cs.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: cs.primary.withValues(alpha: 0.15),
+                child: Text(
+                  patient.prenom.isNotEmpty ? patient.prenom[0].toUpperCase() : '?',
+                  style: TextStyle(color: cs.primary, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                patient.prenom,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurface),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                'P. ${patient.pointure}',
+                style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick action chip
+class _QuickChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  
+  const _QuickChip({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: cs.primary),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(fontSize: 12, color: cs.onSurface)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1459,6 +1875,99 @@ class _TemplateBar extends StatelessWidget {
           child: _GlassIconButton(icon: loading ? Icons.hourglass_empty : Icons.refresh_rounded, onTap: onRefresh),
         ),
       ]),
+    );
+  }
+}
+
+/// Delete option tile for the delete dialog
+class _DeleteOptionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final ColorScheme cs;
+  final bool isDark;
+  final bool isDestructive;
+
+  const _DeleteOptionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.cs,
+    required this.isDark,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark 
+                ? Colors.white.withValues(alpha: 0.06)
+                : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDestructive 
+                  ? cs.error.withValues(alpha: 0.3)
+                  : (isDark ? Colors.white.withValues(alpha: 0.1) : cs.outline.withValues(alpha: 0.15)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDestructive 
+                      ? cs.error.withValues(alpha: 0.15)
+                      : cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon, 
+                  color: isDestructive ? cs.error : cs.primary, 
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDestructive ? cs.error : cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: cs.onSurfaceVariant,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
