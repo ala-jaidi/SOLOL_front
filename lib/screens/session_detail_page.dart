@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:lidarmesure/models/session.dart';
 import 'package:lidarmesure/models/user.dart';
+import 'package:lidarmesure/models/medical_questionnaire.dart';
 import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/services/patient_service.dart';
 import 'package:lidarmesure/services/pdf_report_service.dart';
@@ -26,6 +28,8 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
   Session? _session;
   Patient? _patient;
   bool _loading = true;
+  bool _isEditingQuestionnaire = false;
+  List<MedicalQuestionnaire> _editableQuestionnaires = [];
 
   @override
   void initState() {
@@ -43,6 +47,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     setState(() {
       _session = s;
       _patient = p;
+      _editableQuestionnaires = List.from(s?.questionnaires ?? []);
       _loading = false;
     });
   }
@@ -77,6 +82,45 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
         return 'Terminée';
       case SessionStatus.cancelled:
         return 'Annulée';
+    }
+  }
+
+  Future<void> _saveQuestionnaire() async {
+    if (_session == null) return;
+    
+    try {
+      final updatedSession = _session!.copyWith(
+        questionnaires: _editableQuestionnaires,
+        updatedAt: DateTime.now(),
+      );
+      
+      await _sessionService.updateSession(updatedSession);
+      
+      setState(() {
+        _session = updatedSession;
+        _isEditingQuestionnaire = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).isFrench 
+                ? 'Questionnaire sauvegardé' 
+                : 'Questionnaire saved'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Erreur sauvegarde questionnaire: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     }
   }
 
@@ -501,7 +545,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
 
                       SizedBox(height: AppSpacing.lg),
 
-                      // Scan Images
+                      // Scan Images - Afficher les images debug (output) en priorité
                       Container(
                         padding: AppSpacing.paddingMd,
                         decoration: BoxDecoration(
@@ -514,51 +558,69 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.image_outlined, color: cs.primary),
+                                Icon(Icons.auto_awesome, color: cs.primary),
                                 const SizedBox(width: 8),
-                                Text(AppLocalizations.of(context).isFrench ? 'Captures LiDAR' : 'LiDAR Captures', style: context.textStyles.titleMedium?.semiBold),
+                                Expanded(
+                                  child: Text(
+                                    AppLocalizations.of(context).isFrench 
+                                        ? 'Résultats d\'analyse' 
+                                        : 'Analysis Results', 
+                                    style: context.textStyles.titleMedium?.semiBold,
+                                  ),
+                                ),
+                                if (s.footScan?.topViewDebug != null || s.footScan?.sideViewDebug != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: cs.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.check_circle, size: 14, color: cs.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'SAM',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: cs.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                               ],
                             ),
                             SizedBox(height: AppSpacing.md),
                             if (s.footScan == null)
-                              Text(AppLocalizations.of(context).isFrench ? 'Aucune image scannee' : 'No scanned images', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant))
+                              Text(AppLocalizations.of(context).isFrench ? 'Aucune image scannée' : 'No scanned images', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant))
                             else
-                              Row(
+                              Column(
                                 children: [
-                                  Expanded(
-                                    child: AspectRatio(
-                                      aspectRatio: 16 / 10,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: cs.surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(AppRadius.md),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildScanImage(
+                                          context,
+                                          cs,
+                                          imageUrl: s.footScan!.topViewDebug ?? s.footScan!.topView,
+                                          label: AppLocalizations.of(context).isFrench ? 'Vue dessus' : 'Top view',
+                                          isDebug: s.footScan!.topViewDebug != null,
                                         ),
-                                        child: s.footScan!.topView != null && s.footScan!.topView!.isNotEmpty
-                                            ? ClipRRect(
-                                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                                child: Image.network(s.footScan!.topView!, fit: BoxFit.cover),
-                                              )
-                                            : Center(child: Icon(Icons.image, color: cs.onSurfaceVariant)),
                                       ),
-                                    ),
-                                  ),
-                                  SizedBox(width: AppSpacing.md),
-                                  Expanded(
-                                    child: AspectRatio(
-                                      aspectRatio: 16 / 10,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: cs.surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(AppRadius.md),
+                                      SizedBox(width: AppSpacing.md),
+                                      Expanded(
+                                        child: _buildScanImage(
+                                          context,
+                                          cs,
+                                          imageUrl: s.footScan!.sideViewDebug ?? s.footScan!.sideView,
+                                          label: AppLocalizations.of(context).isFrench ? 'Vue profil' : 'Side view',
+                                          isDebug: s.footScan!.sideViewDebug != null,
                                         ),
-                                        child: s.footScan!.sideView != null && s.footScan!.sideView!.isNotEmpty
-                                            ? ClipRRect(
-                                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                                child: Image.network(s.footScan!.sideView!, fit: BoxFit.cover),
-                                              )
-                                            : Center(child: Icon(Icons.image, color: cs.onSurfaceVariant)),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -580,17 +642,73 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                         decoration: BoxDecoration(
                           color: cs.surface,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
-                          border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
+                          border: Border.all(
+                            color: _isEditingQuestionnaire 
+                                ? cs.primary.withValues(alpha: 0.5) 
+                                : cs.outline.withValues(alpha: 0.2),
+                            width: _isEditingQuestionnaire ? 2 : 1,
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            MedicalQuestionnaireForm(
-                              questionnaires: s.questionnaires,
-                              onChanged: (_) {},
-                              readOnly: true,
+                            // Header avec boutons édition
+                            Row(
+                              children: [
+                                Icon(Icons.medical_information_outlined, color: cs.primary),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    AppLocalizations.of(context).isFrench 
+                                        ? 'Questionnaire Médical' 
+                                        : 'Medical Questionnaire',
+                                    style: context.textStyles.titleMedium?.semiBold,
+                                  ),
+                                ),
+                                if (_isEditingQuestionnaire) ...[
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _editableQuestionnaires = List.from(s.questionnaires);
+                                        _isEditingQuestionnaire = false;
+                                      });
+                                    },
+                                    child: Text(AppLocalizations.of(context).isFrench ? 'Annuler' : 'Cancel'),
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: _saveQuestionnaire,
+                                    icon: const Icon(Icons.save_outlined, size: 18),
+                                    label: Text(AppLocalizations.of(context).isFrench ? 'Sauvegarder' : 'Save'),
+                                  ),
+                                ] else
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _editableQuestionnaires = List.from(s.questionnaires);
+                                        _isEditingQuestionnaire = true;
+                                      });
+                                    },
+                                    icon: Icon(Icons.edit_outlined, color: cs.primary),
+                                    tooltip: AppLocalizations.of(context).isFrench ? 'Modifier' : 'Edit',
+                                  ),
+                              ],
                             ),
-                            if (s.questionnaires.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            
+                            // Formulaire
+                            MedicalQuestionnaireForm(
+                              questionnaires: _isEditingQuestionnaire 
+                                  ? _editableQuestionnaires 
+                                  : s.questionnaires,
+                              onChanged: (updated) {
+                                setState(() {
+                                  _editableQuestionnaires = updated;
+                                });
+                              },
+                              readOnly: !_isEditingQuestionnaire,
+                            ),
+                            
+                            if (s.questionnaires.isNotEmpty && !_isEditingQuestionnaire) ...[
                               const SizedBox(height: 16),
                               MedicalConditionsSummary(questionnaires: s.questionnaires),
                             ],
@@ -898,6 +1016,135 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
         );
       }
     }
+  }
+
+  Widget _buildScanImage(
+    BuildContext context,
+    ColorScheme cs, {
+    required String imageUrl,
+    required String label,
+    required bool isDebug,
+  }) {
+    final hasImage = imageUrl.isNotEmpty;
+    final isNetworkImage = imageUrl.startsWith('http');
+    final isLocalFile = imageUrl.startsWith('/') && !imageUrl.startsWith('http');
+    
+    Widget buildImageWidget() {
+      if (!hasImage) {
+        return Center(child: Icon(Icons.image, color: cs.onSurfaceVariant));
+      }
+      
+      if (isNetworkImage) {
+        return Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (_, __, ___) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_off, color: cs.onSurfaceVariant),
+                const SizedBox(height: 4),
+                Text('Image non disponible', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        );
+      }
+      
+      if (isLocalFile) {
+        final file = File(imageUrl);
+        if (file.existsSync()) {
+          return Image.file(
+            file,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, __, ___) => Center(
+              child: Icon(Icons.broken_image, color: cs.onSurfaceVariant),
+            ),
+          );
+        } else {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.folder_off, color: cs.onSurfaceVariant),
+                const SizedBox(height: 4),
+                Text('Fichier local', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+              ],
+            ),
+          );
+        }
+      }
+      
+      return Center(child: Icon(Icons.image, color: cs.onSurfaceVariant));
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AspectRatio(
+          aspectRatio: 16 / 10,
+          child: Container(
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: isDebug 
+                  ? Border.all(color: cs.primary.withValues(alpha: 0.3), width: 2)
+                  : null,
+            ),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(isDebug ? AppRadius.md - 2 : AppRadius.md),
+                  child: buildImageWidget(),
+                ),
+                
+                // Badge SAM si image debug
+                if (isDebug)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cs.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'AI',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: cs.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }
 

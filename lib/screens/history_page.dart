@@ -411,16 +411,16 @@ class _SessionHistoryCard extends StatelessWidget {
                         Expanded(
                           child: _MetricBadge(
                             icon: Icons.height,
-                            label: 'Pied D',
-                            value: session.footMetrics.firstWhere((m) => m.side.name == 'droite').formattedLongueur,
+                            label: 'Longueur',
+                            value: session.footMetrics.first.formattedLongueur,
                           ),
                         ),
                         Container(width: 1, height: 24, color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
                         Expanded(
                           child: _MetricBadge(
-                            icon: Icons.height,
-                            label: 'Pied G',
-                            value: session.footMetrics.firstWhere((m) => m.side.name == 'gauche', orElse: () => session.footMetrics.first).formattedLongueur,
+                            icon: Icons.straighten,
+                            label: 'Largeur',
+                            value: session.footMetrics.first.formattedLargeur,
                           ),
                         ),
                         Container(width: 1, height: 24, color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),

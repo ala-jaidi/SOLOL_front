@@ -4,11 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lidarmesure/models/user.dart';
 import 'package:lidarmesure/models/session.dart';
+import 'package:lidarmesure/models/medical_questionnaire.dart';
 import 'package:lidarmesure/services/podology_ai_service.dart';
 import 'package:lidarmesure/services/measurement_service.dart';
+import 'package:lidarmesure/services/session_service.dart';
 import 'package:lidarmesure/theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:uuid/uuid.dart';
 
 /// Professional AI Chat Widget for Podology Analysis
 class PodologyAIChat extends StatefulWidget {
@@ -16,6 +19,7 @@ class PodologyAIChat extends StatefulWidget {
   final Session session;
   final String? topViewUrl;
   final String? sideViewUrl;
+  final Function(List<MedicalQuestionnaire>)? onSavePathologies;
 
   const PodologyAIChat({
     super.key,
@@ -23,6 +27,7 @@ class PodologyAIChat extends StatefulWidget {
     required this.session,
     this.topViewUrl,
     this.sideViewUrl,
+    this.onSavePathologies,
   });
 
   /// Show as bottom sheet
@@ -250,6 +255,139 @@ class _PodologyAIChatState extends State<PodologyAIChat> {
     }
   }
 
+  /// Extraire les pathologies détectées de la conversation et les sauvegarder
+  Future<void> _saveDiagnosis(BuildContext context, ColorScheme cs) async {
+    // Collecter toutes les réponses de l'IA
+    final aiResponses = _messages
+        .where((m) => !m.isUser)
+        .map((m) => m.content)
+        .join('\n');
+
+    // Détecter les pathologies mentionnées
+    final detectedConditions = <FootCondition, String>{};
+    
+    if (aiResponses.toLowerCase().contains('hallux valgus') || 
+        aiResponses.toLowerCase().contains('oignon')) {
+      detectedConditions[FootCondition.halluxvalgus] = 
+          'Hallux Valgus détecté par analyse IA';
+    }
+    if (aiResponses.toLowerCase().contains('pronation')) {
+      detectedConditions[FootCondition.pronation] = 
+          'Pronation détectée par analyse IA';
+    }
+    if (aiResponses.toLowerCase().contains('supination')) {
+      detectedConditions[FootCondition.supination] = 
+          'Supination détectée par analyse IA';
+    }
+    if (aiResponses.toLowerCase().contains('fasciite') || 
+        aiResponses.toLowerCase().contains('fasciitis')) {
+      detectedConditions[FootCondition.plantarfasciitis] = 
+          'Fasciite plantaire détectée par analyse IA';
+    }
+
+    if (detectedConditions.isEmpty) {
+      // Aucune pathologie détectée, proposer de sauvegarder l'analyse générale
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sauvegarder l\'analyse'),
+          content: const Text(
+            'Aucune pathologie spécifique détectée.\n'
+            'Voulez-vous sauvegarder l\'analyse générale?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Sauvegarder'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        final now = DateTime.now();
+        final questionnaire = MedicalQuestionnaire(
+          id: const Uuid().v4(),
+          cleDeLaQuestion: 'Analyse IA du ${now.day}/${now.month}/${now.year}',
+          condition: null,
+          reponse: aiResponses.length > 500 
+              ? '${aiResponses.substring(0, 500)}...' 
+              : aiResponses,
+          createdAt: now,
+          updatedAt: now,
+        );
+        
+        await _saveQuestionnaires([questionnaire]);
+      }
+      return;
+    }
+
+    // Afficher les pathologies détectées et demander confirmation
+    final selectedConditions = await showDialog<List<FootCondition>>(
+      context: context,
+      builder: (ctx) => _PathologySelectionDialog(
+        detectedConditions: detectedConditions,
+        colorScheme: cs,
+      ),
+    );
+
+    if (selectedConditions != null && selectedConditions.isNotEmpty) {
+      final now = DateTime.now();
+      final questionnaires = selectedConditions.map((condition) {
+        return MedicalQuestionnaire(
+          id: const Uuid().v4(),
+          cleDeLaQuestion: detectedConditions[condition] ?? 'Détecté par IA',
+          condition: condition,
+          reponse: 'Diagnostic automatique par SOLOL AI - ${now.day}/${now.month}/${now.year}',
+          createdAt: now,
+          updatedAt: now,
+        );
+      }).toList();
+
+      await _saveQuestionnaires(questionnaires);
+    }
+  }
+
+  Future<void> _saveQuestionnaires(List<MedicalQuestionnaire> questionnaires) async {
+    try {
+      final sessionService = SessionService();
+      
+      // Ajouter les nouveaux questionnaires aux existants
+      final updatedSession = widget.session.copyWith(
+        questionnaires: [...widget.session.questionnaires, ...questionnaires],
+        updatedAt: DateTime.now(),
+      );
+      
+      await sessionService.updateSession(updatedSession);
+      
+      // Appeler le callback si fourni
+      widget.onSavePathologies?.call(questionnaires);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${questionnaires.length} diagnostic(s) sauvegardé(s)'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Erreur sauvegarde diagnostic: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -331,6 +469,12 @@ class _PodologyAIChatState extends State<PodologyAIChat> {
                 ),
               ],
             ),
+          ),
+          // Bouton sauvegarder diagnostic
+          IconButton(
+            icon: Icon(Icons.save_outlined, color: cs.primary),
+            onPressed: _messages.length > 1 ? () => _saveDiagnosis(context, cs) : null,
+            tooltip: 'Sauvegarder le diagnostic',
           ),
           IconButton(
             icon: Icon(Icons.refresh_rounded, color: cs.onSurfaceVariant),
@@ -952,6 +1096,183 @@ class _ImageThumbnail extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Dialog pour sélectionner les pathologies à sauvegarder
+class _PathologySelectionDialog extends StatefulWidget {
+  final Map<FootCondition, String> detectedConditions;
+  final ColorScheme colorScheme;
+
+  const _PathologySelectionDialog({
+    required this.detectedConditions,
+    required this.colorScheme,
+  });
+
+  @override
+  State<_PathologySelectionDialog> createState() => _PathologySelectionDialogState();
+}
+
+class _PathologySelectionDialogState extends State<_PathologySelectionDialog> {
+  late Set<FootCondition> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.detectedConditions.keys.toSet();
+  }
+
+  String _getConditionLabel(FootCondition condition) {
+    switch (condition) {
+      case FootCondition.halluxvalgus:
+        return 'Hallux Valgus';
+      case FootCondition.pronation:
+        return 'Pronation';
+      case FootCondition.supination:
+        return 'Supination';
+      case FootCondition.plantarfasciitis:
+        return 'Fasciite Plantaire';
+    }
+  }
+
+  IconData _getConditionIcon(FootCondition condition) {
+    switch (condition) {
+      case FootCondition.halluxvalgus:
+        return Icons.accessibility_new;
+      case FootCondition.pronation:
+        return Icons.turn_left;
+      case FootCondition.supination:
+        return Icons.turn_right;
+      case FootCondition.plantarfasciitis:
+        return Icons.healing;
+    }
+  }
+
+  Color _getConditionColor(FootCondition condition) {
+    final cs = widget.colorScheme;
+    switch (condition) {
+      case FootCondition.halluxvalgus:
+        return cs.error;
+      case FootCondition.pronation:
+        return cs.tertiary;
+      case FootCondition.supination:
+        return cs.secondary;
+      case FootCondition.plantarfasciitis:
+        return const Color(0xFFE68600);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.colorScheme;
+    
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.medical_services_outlined, color: cs.primary),
+          const SizedBox(width: 12),
+          const Text('Pathologies détectées'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'L\'IA a détecté les pathologies suivantes. Sélectionnez celles à sauvegarder:',
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          ...widget.detectedConditions.keys.map((condition) {
+            final isSelected = _selected.contains(condition);
+            final color = _getConditionColor(condition);
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selected.remove(condition);
+                    } else {
+                      _selected.add(condition);
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? color.withOpacity(0.15) : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? color : cs.outline.withOpacity(0.2),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getConditionIcon(condition),
+                        color: isSelected ? color : cs.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _getConditionLabel(condition),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isSelected ? color : cs.onSurface,
+                              ),
+                            ),
+                            Text(
+                              widget.detectedConditions[condition] ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Checkbox(
+                        value: isSelected,
+                        onChanged: (v) {
+                          setState(() {
+                            if (v == true) {
+                              _selected.add(condition);
+                            } else {
+                              _selected.remove(condition);
+                            }
+                          });
+                        },
+                        activeColor: color,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Annuler'),
+        ),
+        FilledButton.icon(
+          onPressed: _selected.isEmpty 
+              ? null 
+              : () => Navigator.pop(context, _selected.toList()),
+          icon: const Icon(Icons.save_outlined, size: 18),
+          label: Text('Sauvegarder (${_selected.length})'),
+        ),
+      ],
     );
   }
 }

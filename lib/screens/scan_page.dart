@@ -152,17 +152,25 @@ class _ScanPageState extends State<ScanPage> {
             updatedAt: now,
           );
 
-          // Utiliser les URLs de debug du serveur (images analysées par l'IA)
+          // URLs de debug du serveur (images analysées avec segmentation)
+          // Les images debug sont prioritaires car les fichiers locaux sont temporaires
           final topDebugUrl = finalResult['top_debug_image_url'] as String?;
           final sideDebugUrl = finalResult['side_debug_image_url'] as String?;
           
           final scan = FootScan(
+            // Utiliser les URLs debug comme images principales si disponibles
             topView: topDebugUrl != null 
                 ? MeasurementService.getImageUrl(topDebugUrl) 
-                : _topImage!.path,
+                : '',
             sideView: sideDebugUrl != null 
                 ? MeasurementService.getImageUrl(sideDebugUrl) 
-                : (_sideImage?.path ?? ''),
+                : '',
+            topViewDebug: topDebugUrl != null 
+                ? MeasurementService.getImageUrl(topDebugUrl) 
+                : null,
+            sideViewDebug: sideDebugUrl != null 
+                ? MeasurementService.getImageUrl(sideDebugUrl) 
+                : null,
             angle: AngleType.top,
             createdAt: now,
             updatedAt: now,

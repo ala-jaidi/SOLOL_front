@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidarmesure/models/user.dart';
 import 'package:lidarmesure/models/session.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 
 /// Professional Podology AI Assistant Service
 /// Uses Groq API (FREE) for foot scan analysis with LLaMA models
@@ -12,49 +13,52 @@ class PodologyAIService {
   static String get _apiKey => dotenv.env['GROQ_API_KEY'] ?? '';
   // Modèle texte pour les conversations
   static const String _textModel = 'llama-3.3-70b-versatile';
-  // Modèle vision pour l'analyse d'images
-  static const String _visionModel = 'llama-3.2-90b-vision-preview';
+  // Modèle vision pour l'analyse d'images (Llama 4 Scout - nouveau modèle Groq)
+  static const String _visionModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
   static const String _apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
   static const String _systemPrompt = '''
-Vous êtes un Assistant Podologue Clinique Expert pour la plateforme SOLOL.
-Votre rôle est d'analyser les scans de pieds et les métriques fournies par le système de segmentation SAM (Segment Anything Model).
+Vous êtes **SOLOL AI**, l'assistant intelligent intégré à l'application SOLOL de podologie numérique.
 
-## DIRECTIVES CLINIQUES:
+## 🎯 VOTRE MISSION
+Accompagner les professionnels de santé dans l'analyse des scans de pieds réalisés avec l'app SOLOL qui utilise la segmentation SAM (Segment Anything Model) pour mesurer précisément les pieds.
 
-### 1. Identification des Pathologies
-- **Hallux Valgus (Oignon)**: Déviation du gros orteil > 15°, proéminence médiale
-- **Pronation excessive**: Affaissement de l'arche interne, usure médiale
-- **Supination**: Appui excessif sur le bord externe, arche haute
-- **Fasciite plantaire**: Douleur au talon, tension de l'aponévrose
-- **Pieds plats/creux**: Analyse de la voûte plantaire
-- **Métatarsalgies**: Douleurs à l'avant-pied
+## 📱 CONTEXTE DE L'APPLICATION
+- L'utilisateur a pris des photos du pied (vue dessus + vue profil)
+- Le système SAM a segmenté le pied et calculé les métriques
+- Vous avez accès aux données patient et aux mesures du scan
 
-### 2. Analyse des Métriques
-- Longueur: Correspondance avec la pointure
-- Largeur avant-pied: Évaluation de l'étalement métatarsien
-- Indice de confiance: Fiabilité de la mesure
+## 🔬 EXPERTISE CLINIQUE
 
-### 3. Recommandations de Semelles
-- **Semelles de confort**: Pour pieds normaux sans pathologie
-- **Semelles de soutien**: Pour pronation légère à modérée
-- **Semelles correctrices**: Pour hallux valgus, pronation sévère
-- **Semelles sport**: Adaptées à l'activité physique
-- **Semelles diabétiques**: Protection et décharge des zones à risque
+### Pathologies à identifier
+- **Hallux Valgus**: Déviation gros orteil > 15°
+- **Pronation/Supination**: Analyse de l'appui
+- **Pieds plats/creux**: Évaluation de la voûte
+- **Métatarsalgies**: Douleurs avant-pied
 
-### 4. Format de Réponse
-Structurez vos analyses de manière professionnelle:
-- 📊 **Résumé des mesures**
-- 🔍 **Observations cliniques**
-- ⚠️ **Anomalies détectées** (si présentes)
-- 💡 **Recommandations thérapeutiques**
-- 👟 **Type de semelles conseillées**
+### Analyse des mesures
+- Correspondance longueur/pointure déclarée
+- Évaluation largeur avant-pied
+- Fiabilité de la mesure (confidence)
 
-### 5. Ton et Style
-- Professionnel et précis
-- Utiliser la terminologie médicale appropriée
-- Toujours contextualiser par rapport au profil patient
-- Être pédagogue dans les explications au clinicien
+### Recommandations semelles
+- **Confort**: Pieds normaux
+- **Soutien**: Pronation légère
+- **Correctrices**: Pathologies marquées
+- **Sport**: Activité physique
+- **Diabétiques**: Protection zones à risque
+
+## 💬 STYLE DE RÉPONSE
+- **Concis et structuré** - Réponses claires, pas de pavés
+- **Emojis modérés** - Pour la lisibilité (📊 🔍 ⚠️ 💡 👟)
+- **Professionnel** - Terminologie médicale appropriée
+- **Actionnable** - Recommandations pratiques
+
+## ⚠️ RÈGLES IMPORTANTES
+1. Ne jamais inventer de données - utiliser uniquement ce qui est fourni
+2. Signaler si les mesures semblent incohérentes
+3. Toujours contextualiser par rapport au profil patient
+4. Réponses en français par défaut
 ''';
 
   final List<Map<String, dynamic>> _history = [];
@@ -147,17 +151,12 @@ Structurez vos analyses de manière professionnelle:
         'Analysez cette image de scan podologique. Identifiez les anomalies visibles, '
         'évaluez la qualité de la segmentation, et fournissez vos observations cliniques.';
 
-      // Compresser l'image si elle est trop grande (max 1MB pour Groq)
-      Uint8List processedBytes = imageBytes;
-      if (imageBytes.length > 500000) {
-        // Réduire la qualité pour les grandes images
-        debugPrint('⚠️ Image trop grande (${imageBytes.length} bytes), compression...');
-        // On utilise directement les bytes originaux avec une note
-        // Pour une vraie compression, il faudrait utiliser image package
-      }
+      // Compresser l'image pour Groq (max ~4MB en base64, donc ~3MB en bytes)
+      Uint8List processedBytes = await _compressImage(imageBytes, mimeType);
+      debugPrint('📦 Image après compression: ${processedBytes.length} bytes');
       
       final base64Image = base64Encode(processedBytes);
-      final mediaType = mimeType.contains('png') ? 'image/png' : 'image/jpeg';
+      const mediaType = 'image/jpeg'; // Toujours JPEG après compression
 
       // Format OpenAI/Groq pour les images (image_url avec data URI)
       final imageContent = {
@@ -241,10 +240,29 @@ Structurez vos analyses de manière professionnelle:
   /// Send request to Groq API (OpenAI-compatible format)
   /// [useVision] - Use vision model for image analysis
   Future<String> _sendToGroqAPI({bool useVision = false}) async {
+    // Pour le modèle texte, convertir les messages image en texte
+    final processedHistory = _history.map((msg) {
+      final content = msg['content'];
+      if (!useVision && content is List) {
+        // Extraire le texte des messages multimodaux pour le modèle texte
+        final textParts = (content as List)
+            .where((part) => part is Map && part['type'] == 'text')
+            .map((part) => part['text'] as String)
+            .join('\n');
+        return {
+          'role': msg['role'],
+          'content': textParts.isNotEmpty 
+              ? '[Image analysée] $textParts' 
+              : '[Image analysée précédemment]',
+        };
+      }
+      return msg;
+    }).toList();
+
     // Build messages with system prompt
     final messages = [
       {'role': 'system', 'content': _systemPrompt},
-      ..._history,
+      ...processedHistory,
     ];
 
     final modelToUse = useVision ? _visionModel : _textModel;
@@ -273,6 +291,49 @@ Structurez vos analyses de manière professionnelle:
     } else {
       final error = jsonDecode(response.body);
       throw Exception(error['error']?['message'] ?? 'API Error: ${response.statusCode}');
+    }
+  }
+
+  /// Compress image to reduce size for API
+  /// Max size ~500KB for reliable Groq API calls
+  Future<Uint8List> _compressImage(Uint8List imageBytes, String mimeType) async {
+    try {
+      // Decode the image
+      img.Image? image = img.decodeImage(imageBytes);
+      if (image == null) {
+        debugPrint('⚠️ Impossible de décoder l\'image, envoi original');
+        return imageBytes;
+      }
+
+      debugPrint('📐 Image originale: ${image.width}x${image.height}, ${imageBytes.length} bytes');
+
+      // Resize if too large (max 1024px on longest side)
+      const maxSize = 1024;
+      if (image.width > maxSize || image.height > maxSize) {
+        if (image.width > image.height) {
+          image = img.copyResize(image, width: maxSize);
+        } else {
+          image = img.copyResize(image, height: maxSize);
+        }
+        debugPrint('📐 Image redimensionnée: ${image.width}x${image.height}');
+      }
+
+      // Encode as JPEG with quality reduction
+      int quality = 85;
+      Uint8List compressed = Uint8List.fromList(img.encodeJpg(image, quality: quality));
+      
+      // Further reduce quality if still too large (target: ~500KB)
+      while (compressed.length > 500000 && quality > 20) {
+        quality -= 15;
+        compressed = Uint8List.fromList(img.encodeJpg(image, quality: quality));
+        debugPrint('🔄 Compression qualité $quality: ${compressed.length} bytes');
+      }
+
+      debugPrint('✅ Image compressée: ${compressed.length} bytes (qualité: $quality)');
+      return compressed;
+    } catch (e) {
+      debugPrint('❌ Erreur compression: $e, envoi original');
+      return imageBytes;
     }
   }
 
